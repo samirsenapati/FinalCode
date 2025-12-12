@@ -53,13 +53,30 @@ npm install
      ANTHROPIC_API_KEY=sk-ant-your-actual-key-here
      ```
 
-### Step 4: Run the App
+### Step 4: Configure Supabase Auth (Required)
+
+Add your Supabase project credentials to `.env.local` (do not commit this file):
+
+```
+NEXT_PUBLIC_SUPABASE_URL=your-project-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+# Optional: only set if your site is deployed somewhere other than localhost
+NEXT_PUBLIC_SITE_URL=https://your-deployment-url
+```
+
+### Step 5: Run the App
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) - You're ready to code! 🎉
+The dev server binds to `0.0.0.0:3000` so it is reachable from host machines, Codespaces previews, or forwarded ports. Confirm it’s up with:
+
+```bash
+curl -I http://localhost:3000
+```
+
+Then open [http://localhost:3000](http://localhost:3000) in your browser — you're ready to code! 🎉
 
 ---
 
@@ -95,14 +112,22 @@ finalcode/
 │   │       └── route.ts      # AI chat endpoint
 │   ├── globals.css           # Global styles
 │   ├── layout.tsx            # Root layout
-│   └── page.tsx              # Main IDE page
+│   ├── login/page.tsx        # Supabase auth page
+│   ├── auth/callback/route.ts# Supabase OAuth callback handler
+│   ├── actions/              # Server actions (auth)
+│   └── page.tsx              # Main IDE page (protected)
 ├── components/
+│   ├── auth/
+│   │   └── AuthForm.tsx      # Sign in / sign up UI
 │   └── editor/
 │       ├── AIChat.tsx        # AI chat sidebar
 │       ├── CodeEditor.tsx    # Code editor (CodeMirror)
 │       ├── FileTree.tsx      # File explorer
 │       ├── Preview.tsx       # Live preview
 │       └── Terminal.tsx      # Output terminal
+├── lib/supabase/             # Supabase client helpers
+│   ├── client.ts             # Browser client for Supabase
+│   └── server.ts             # Server client with auth cookies
 ├── .env.example              # Environment template
 ├── package.json              # Dependencies
 └── README.md                 # This file
@@ -129,7 +154,9 @@ Your app will be live at `https://your-project.vercel.app`!
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `ANTHROPIC_API_KEY` | Yes | Your Claude API key |
-| `NEXT_PUBLIC_SITE_URL` | No | Your domain (for OAuth) |
+| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anonymous client key |
+| `NEXT_PUBLIC_SITE_URL` | No | Public site URL for OAuth redirects |
 
 ---
 
@@ -139,6 +166,11 @@ Your app will be live at `https://your-project.vercel.app`!
 - Make sure `.env.local` exists in the project root
 - Check that your API key is correct (starts with `sk-ant-`)
 - Restart the dev server after adding the key
+
+### "Connection Refused" on http://localhost:3000
+- Start the dev server with `npm run dev` (it listens on 0.0.0.0:3000)
+- If you’re on a remote/dev container, open the forwarded port 3000 or the preview link
+- Re-run `curl -I http://localhost:3000` to confirm a 200/307 response
 
 ### Preview Not Updating
 - Click the Refresh button in the preview panel
