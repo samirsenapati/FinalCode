@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
 import { Send, Loader2, Sparkles, User, Copy, Check, Wand2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
@@ -182,7 +182,12 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
               <div className="prose prose-invert prose-sm max-w-none">
                 <ReactMarkdown
                   components={{
-                    code({ node, inline, className, children, ...props }) {
+                    code({ node, inline, className, children, ...props }: {
+                      node?: unknown;
+                      inline?: boolean;
+                      className?: string;
+                      children?: ReactNode;
+                    }) {
                       const match = /language-(\w+)/.exec(className || '');
                       const codeString = String(children).replace(/\n$/, '');
                       
