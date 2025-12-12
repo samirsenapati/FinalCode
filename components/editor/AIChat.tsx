@@ -1,0 +1,291 @@
+'use client';
+
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { Send, Loader2, Sparkles, User, Copy, Check, Wand2 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+
+interface Message {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: Date;
+}
+
+interface AIChatProps {
+  onCodeGenerated: (code: string, language: string) => void;
+  onReplaceAllFiles: (files: Record<string, string>) => void;
+  currentFiles: Record<string, string>;
+}
+
+// Example prompts for inspiration
+const EXAMPLE_PROMPTS = [
+  "Create a beautiful todo app with animations",
+  "Build a weather dashboard with API integration",
+  "Make a landing page for a SaaS product",
+  "Create a calculator with a modern design",
+  "Build a simple game like tic-tac-toe",
+];
+
+export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFiles }: AIChatProps) {
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: '1',
+      role: 'assistant',
+      content: "Hi! I'm your AI coding assistant. 🚀\n\nTell me what you want to build, and I'll create the code for you. Try something like:\n\n- \"Create a beautiful todo app\"\n- \"Build a calculator with a modern design\"\n- \"Make a landing page for my startup\"\n\nI can write HTML, CSS, and JavaScript to bring your ideas to life!",
+      timestamp: new Date(),
+    }
+  ]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Copy code to clipboard
+  const copyToClipboard = async (text: string, id: string) => {
+    await navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  // Extract code blocks from response
+  const extractCode = (content: string): { code: string; language: string }[] => {
+    const codeBlocks: { code: string; language: string }[] = [];
+    const regex = /```(\w+)?\n([\s\S]*?)```/g;
+    let match;
+    
+    while ((match = regex.exec(content)) !== null) {
+      codeBlocks.push({
+        language: match[1] || 'javascript',
+        code: match[2].trim()
+      });
+    }
+    
+    return codeBlocks;
+  };
+
+  // Send message to AI
+  const sendMessage = useCallback(async () => {
+    if (!input.trim() || isLoading) return;
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: input.trim(),
+      timestamp: new Date(),
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: input.trim(),
+          currentFiles,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get response');
+      }
+
+      const data = await response.json();
+      
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: data.response,
+        timestamp: new Date(),
+      };
+
+      setMessages(prev => [...prev, assistantMessage]);
+
+      // Extract and apply code
+      const codeBlocks = extractCode(data.response);
+      
+      // Check if we got multiple files (complete app generation)
+      if (data.files && Object.keys(data.files).length > 0) {
+        onReplaceAllFiles(data.files);
+      } else if (codeBlocks.length > 0) {
+        // Apply the last/main code block
+        const mainCode = codeBlocks[codeBlocks.length - 1];
+        onCodeGenerated(mainCode.code, mainCode.language);
+      }
+
+    } catch (error) {
+      console.error('Chat error:', error);
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: "I apologize, but I encountered an error. Please make sure your API key is configured in `.env.local`. Check the README for setup instructions.",
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [input, isLoading, currentFiles, onCodeGenerated, onReplaceAllFiles]);
+
+  // Handle key press
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+
+  // Use example prompt
+  const useExample = (prompt: string) => {
+    setInput(prompt);
+    inputRef.current?.focus();
+  };
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {messages.map((message) => (
+          <div
+            key={message.id}
+            className={`ai-message ${
+              message.role === 'user' ? 'flex justify-end' : ''
+            }`}
+          >
+            <div
+              className={`max-w-[90%] rounded-xl p-3 ${
+                message.role === 'user'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-800 text-gray-100'
+              }`}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                {message.role === 'assistant' ? (
+                  <Sparkles className="w-4 h-4 text-purple-400" />
+                ) : (
+                  <User className="w-4 h-4" />
+                )}
+                <span className="text-xs opacity-70">
+                  {message.role === 'assistant' ? 'AI Assistant' : 'You'}
+                </span>
+              </div>
+              
+              <div className="prose prose-invert prose-sm max-w-none">
+                <ReactMarkdown
+                  components={{
+                    code({ node, inline, className, children, ...props }) {
+                      const match = /language-(\w+)/.exec(className || '');
+                      const codeString = String(children).replace(/\n$/, '');
+                      
+                      if (!inline && match) {
+                        return (
+                          <div className="relative group">
+                            <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={() => copyToClipboard(codeString, message.id + match[1])}
+                                className="p-1.5 bg-gray-700 rounded hover:bg-gray-600 transition-colors"
+                              >
+                                {copiedId === message.id + match[1] ? (
+                                  <Check className="w-4 h-4 text-green-400" />
+                                ) : (
+                                  <Copy className="w-4 h-4 text-gray-300" />
+                                )}
+                              </button>
+                            </div>
+                            <pre className="bg-gray-900 rounded-lg p-3 overflow-x-auto">
+                              <code className={className} {...props}>
+                                {children}
+                              </code>
+                            </pre>
+                          </div>
+                        );
+                      }
+                      
+                      return (
+                        <code className="bg-gray-700 px-1 py-0.5 rounded text-sm" {...props}>
+                          {children}
+                        </code>
+                      );
+                    },
+                  }}
+                >
+                  {message.content}
+                </ReactMarkdown>
+              </div>
+            </div>
+          </div>
+        ))}
+        
+        {isLoading && (
+          <div className="ai-message">
+            <div className="bg-gray-800 rounded-xl p-4 flex items-center gap-3">
+              <Loader2 className="w-5 h-5 text-purple-400 animate-spin" />
+              <span className="text-gray-300">Generating code<span className="loading-dots"></span></span>
+            </div>
+          </div>
+        )}
+        
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Example Prompts */}
+      {messages.length <= 1 && (
+        <div className="px-4 pb-2">
+          <p className="text-xs text-gray-500 mb-2 flex items-center gap-1">
+            <Wand2 className="w-3 h-3" /> Try an example:
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {EXAMPLE_PROMPTS.slice(0, 3).map((prompt, idx) => (
+              <button
+                key={idx}
+                onClick={() => useExample(prompt)}
+                className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-2 py-1 rounded-full transition-colors"
+              >
+                {prompt.length > 30 ? prompt.slice(0, 30) + '...' : prompt}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Input */}
+      <div className="p-4 border-t border-editor-border">
+        <div className="flex gap-2">
+          <textarea
+            ref={inputRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyPress}
+            placeholder="Describe what you want to build..."
+            className="flex-1 bg-gray-800 text-white rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 placeholder-gray-500"
+            rows={2}
+            disabled={isLoading}
+          />
+          <button
+            onClick={sendMessage}
+            disabled={!input.trim() || isLoading}
+            className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white p-3 rounded-xl transition-colors self-end"
+          >
+            {isLoading ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <Send className="w-5 h-5" />
+            )}
+          </button>
+        </div>
+        <p className="text-xs text-gray-500 mt-2 text-center">
+          Press Enter to send • Shift+Enter for new line
+        </p>
+      </div>
+    </div>
+  );
+}
