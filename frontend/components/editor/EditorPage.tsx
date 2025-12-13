@@ -3,20 +3,15 @@
 import { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
 import {
   ChevronDown,
-  ChevronRight,
   Code2,
   Eye,
   FileCode,
   Files,
   FolderOpen,
   GitBranch,
-  Globe,
   Loader2,
   LogOut,
-  MessageSquare,
-  MoreHorizontal,
   PanelLeftClose,
-  PanelRightClose,
   Play,
   Plus,
   RefreshCw,
@@ -136,7 +131,6 @@ console.log('FinalCode app loaded');`,
 };
 
 type SidebarTab = 'files' | 'search' | 'git';
-type RightPanelTab = 'ai' | 'preview';
 type BottomPanelTab = 'console' | 'terminal';
 
 export default function EditorPage({ userEmail }: EditorPageProps) {
@@ -157,11 +151,9 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
   const [saveError, setSaveError] = useState<string | null>(null);
 
   // Panel states
-  const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
-  const [rightPanelOpen, setRightPanelOpen] = useState(true);
+  const [leftSidebarOpen, setLeftSidebarOpen] = useState(false);
   const [bottomPanelOpen, setBottomPanelOpen] = useState(true);
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('files');
-  const [rightPanelTab, setRightPanelTab] = useState<RightPanelTab>('preview');
   const [bottomPanelTab, setBottomPanelTab] = useState<BottomPanelTab>('console');
 
   // Modals
@@ -180,6 +172,7 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
 
   // Open files (tabs)
   const [openFiles, setOpenFiles] = useState<string[]>(['index.html']);
+  const [agentStatus, setAgentStatus] = useState('Idle — ready for your next request');
 
   const refreshProjects = useCallback(async () => {
     const list = await listProjects();
@@ -611,161 +604,149 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
             <GitBranch className="w-5 h-5" />
           </button>
 
-          <div className="flex-1" />
+        <div className="flex-1" />
 
-          <button
-            onClick={() => setLeftSidebarOpen(!leftSidebarOpen)}
-            className="sidebar-icon"
-            title={leftSidebarOpen ? 'Hide Sidebar' : 'Show Sidebar'}
-          >
-            <PanelLeftClose className={`w-5 h-5 transition-transform ${!leftSidebarOpen ? 'rotate-180' : ''}`} />
-          </button>
+        <button
+          onClick={() => setLeftSidebarOpen(!leftSidebarOpen)}
+          className="sidebar-icon"
+          title={leftSidebarOpen ? 'Hide Sidebar' : 'Show Sidebar'}
+        >
+          <PanelLeftClose className={`w-5 h-5 transition-transform ${!leftSidebarOpen ? 'rotate-180' : ''}`} />
+        </button>
+      </div>
+
+      {/* Left Secondary Sidebar (File Tree) */}
+      {leftSidebarOpen && (
+        <div className="w-60 bg-[#161b22] border-r border-[#30363d] flex flex-col flex-shrink-0 animate-slide-right">
+          {sidebarTab === 'files' && (
+            <>
+              <div className="h-10 px-3 flex items-center justify-between border-b border-[#21262d]">
+                <span className="text-xs font-semibold text-[#8b949e] uppercase tracking-wider">Files</span>
+                <button
+                  onClick={() => {
+                    const name = prompt('Enter filename (e.g., app.js):');
+                    if (name) handleCreateFile(name);
+                  }}
+                  className="p-1 hover:bg-[#21262d] rounded transition-colors"
+                  title="New File"
+                >
+                  <Plus className="w-4 h-4 text-[#8b949e]" />
+                </button>
+              </div>
+              <FileTree
+                files={files}
+                activeFile={activeFile}
+                onSelectFile={handleSelectFile}
+                onDeleteFile={handleDeleteFile}
+              />
+            </>
+          )}
+          {sidebarTab === 'search' && (
+            <div className="p-3">
+              <input
+                type="text"
+                placeholder="Search files..."
+                className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#6e7681] focus:outline-none focus:border-[#58a6ff]"
+              />
+              <p className="text-xs text-[#6e7681] mt-3 text-center">Search functionality coming soon</p>
+            </div>
+          )}
+          {sidebarTab === 'git' && (
+            <div className="p-3">
+              <p className="text-xs text-[#6e7681] text-center">Version control coming soon</p>
+            </div>
+          )}
         </div>
+      )}
 
-        {/* Left Secondary Sidebar (File Tree) */}
-        {leftSidebarOpen && (
-          <div className="w-60 bg-[#161b22] border-r border-[#30363d] flex flex-col flex-shrink-0 animate-slide-right">
-            {sidebarTab === 'files' && (
-              <>
-                <div className="h-10 px-3 flex items-center justify-between border-b border-[#21262d]">
-                  <span className="text-xs font-semibold text-[#8b949e] uppercase tracking-wider">Files</span>
+      {/* Main workspace aligned to left editor/AI and right preview/output */}
+      <div className="flex-1 flex overflow-hidden gap-3 p-3">
+        <div className="flex-[0.55] flex flex-col bg-[#0d1117] border border-[#30363d] rounded-xl overflow-hidden">
+          <div className="h-9 bg-[#161b22] border-b border-[#21262d] flex items-center overflow-x-auto flex-shrink-0">
+            {openFiles.map((filename) => (
+              <div
+                key={filename}
+                onClick={() => setActiveFile(filename)}
+                className={`group flex items-center gap-2 px-3 h-full border-r border-[#21262d] cursor-pointer transition-colors min-w-0 ${
+                  activeFile === filename
+                    ? 'bg-[#0d1117] text-white'
+                    : 'text-[#8b949e] hover:text-white hover:bg-[#21262d]'
+                }`}
+              >
+                <FileCode className={`w-3.5 h-3.5 flex-shrink-0 ${getFileIcon(filename)}`} />
+                <span className="text-xs truncate">{filename}</span>
+                {openFiles.length > 1 && (
                   <button
-                    onClick={() => {
-                      const name = prompt('Enter filename (e.g., app.js):');
-                      if (name) handleCreateFile(name);
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCloseTab(filename);
                     }}
-                    className="p-1 hover:bg-[#21262d] rounded transition-colors"
-                    title="New File"
+                    className="opacity-0 group-hover:opacity-100 hover:bg-[#30363d] rounded p-0.5 transition-opacity"
                   >
-                    <Plus className="w-4 h-4 text-[#8b949e]" />
+                    <X className="w-3 h-3" />
                   </button>
-                </div>
-                <FileTree
-                  files={files}
-                  activeFile={activeFile}
-                  onSelectFile={handleSelectFile}
-                  onDeleteFile={handleDeleteFile}
-                />
-              </>
-            )}
-            {sidebarTab === 'search' && (
-              <div className="p-3">
-                <input
-                  type="text"
-                  placeholder="Search files..."
-                  className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#6e7681] focus:outline-none focus:border-[#58a6ff]"
-                />
-                <p className="text-xs text-[#6e7681] mt-3 text-center">
-                  Search functionality coming soon
-                </p>
+                )}
               </div>
-            )}
-            {sidebarTab === 'git' && (
-              <div className="p-3">
-                <p className="text-xs text-[#6e7681] text-center">
-                  Version control coming soon
-                </p>
-              </div>
-            )}
+            ))}
           </div>
-        )}
 
-        {/* Main Editor + Preview Area */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Editor and Preview Row */}
-          <div className="flex-1 flex overflow-hidden">
-            {/* Code Editor Panel */}
-            <div className={`flex-1 flex flex-col overflow-hidden min-w-0 ${rightPanelOpen ? 'border-r border-[#30363d]' : ''}`}>
-              {/* Editor Tabs */}
-              <div className="h-9 bg-[#161b22] border-b border-[#21262d] flex items-center overflow-x-auto flex-shrink-0">
-                {openFiles.map((filename) => (
-                  <div
-                    key={filename}
-                    onClick={() => setActiveFile(filename)}
-                    className={`group flex items-center gap-2 px-3 h-full border-r border-[#21262d] cursor-pointer transition-colors min-w-0 ${
-                      activeFile === filename
-                        ? 'bg-[#0d1117] text-white'
-                        : 'text-[#8b949e] hover:text-white hover:bg-[#21262d]'
-                    }`}
-                  >
-                    <FileCode className={`w-3.5 h-3.5 flex-shrink-0 ${getFileIcon(filename)}`} />
-                    <span className="text-xs truncate">{filename}</span>
-                    {openFiles.length > 1 && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleCloseTab(filename);
-                        }}
-                        className="opacity-0 group-hover:opacity-100 hover:bg-[#30363d] rounded p-0.5 transition-opacity"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
+          <div className="flex-1 overflow-hidden bg-[#0d1117]">
+            <CodeEditor code={files[activeFile] ?? ''} onChange={handleCodeChange} filename={activeFile} />
+          </div>
 
-              {/* Code Editor */}
-              <div className="flex-1 overflow-hidden bg-[#0d1117]">
-                <CodeEditor code={files[activeFile] ?? ''} onChange={handleCodeChange} filename={activeFile} />
+          <div className="h-72 border-t border-[#30363d] bg-[#0d1117] flex flex-col">
+            <div className="px-4 py-3 border-b border-[#21262d] bg-[#0b0f14] flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-[#1f2937] flex items-center justify-center flex-shrink-0">
+                <Sparkles className="w-5 h-5 text-[#58a6ff]" />
               </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-[#8b949e] uppercase tracking-wider">AI Agent</p>
+                <p className="text-sm text-white truncate" title={agentStatus}>
+                  {agentStatus}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAISettings(true)}
+                className="flex items-center gap-2 px-3 py-1.5 bg-[#21262d] hover:bg-[#30363d] rounded-lg text-sm text-white transition-colors"
+              >
+                <Settings className="w-4 h-4" />
+                Model Settings
+              </button>
             </div>
 
-            {/* Right Panel (Preview/AI) */}
-            {rightPanelOpen && (
-              <div className="w-[45%] min-w-[300px] flex flex-col overflow-hidden">
-                {/* Right Panel Tabs */}
-                <div className="h-9 bg-[#161b22] border-b border-[#21262d] flex items-center px-2 flex-shrink-0">
-                  <button
-                    onClick={() => setRightPanelTab('preview')}
-                    className={`panel-tab ${rightPanelTab === 'preview' ? 'active' : ''}`}
-                  >
-                    <Globe className="w-3.5 h-3.5 inline mr-1.5" />
-                    Webview
-                  </button>
-                  <button
-                    onClick={() => setRightPanelTab('ai')}
-                    className={`panel-tab ${rightPanelTab === 'ai' ? 'active' : ''}`}
-                  >
-                    <Sparkles className="w-3.5 h-3.5 inline mr-1.5" />
-                    AI
-                  </button>
-                  <div className="flex-1" />
-                  <button
-                    onClick={() => setRightPanelOpen(false)}
-                    className="icon-btn p-1"
-                    title="Close Panel"
-                  >
-                    <PanelRightClose className="w-4 h-4" />
-                  </button>
-                </div>
-
-                {/* Right Panel Content */}
-                <div className="flex-1 overflow-hidden">
-                  {rightPanelTab === 'preview' && (
-                    <div className="h-full bg-white">
-                      <Preview files={files} />
-                    </div>
-                  )}
-                  {rightPanelTab === 'ai' && (
-                    <div className="h-full bg-[#0d1117]">
-                      <AIChat
-                        onCodeGenerated={handleAICodeGenerated}
-                        onReplaceAllFiles={handleReplaceAllFiles}
-                        currentFiles={files}
-                      />
-                    </div>
-                  )}
-                </div>
+            <div className="h-12 px-4 flex items-center border-b border-[#21262d]">
+              <div>
+                <p className="text-xs text-[#8b949e] uppercase tracking-wider">AI Assistant</p>
+                <p className="text-sm text-white">Model selection & prompts</p>
               </div>
-            )}
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <AIChat
+                onCodeGenerated={handleAICodeGenerated}
+                onReplaceAllFiles={handleReplaceAllFiles}
+                currentFiles={files}
+                onStatusChange={setAgentStatus}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-[0.45] flex flex-col gap-3 overflow-hidden">
+          <div className="flex-1 bg-white border border-[#30363d] rounded-xl overflow-hidden flex flex-col">
+            <div className="h-12 px-4 flex items-center justify-between border-b border-[#30363d] bg-[#0d1117]">
+              <div className="flex items-center gap-2 text-white text-sm font-medium">
+                <Eye className="w-4 h-4 text-[#58a6ff]" />
+                Live Preview
+              </div>
+            </div>
+            <div className="flex-1">
+              <Preview files={files} />
+            </div>
           </div>
 
-          {/* Bottom Panel (Console/Terminal) */}
           {bottomPanelOpen && (
-            <div className="h-48 border-t border-[#30363d] flex flex-col flex-shrink-0">
-              {/* Bottom Panel Tabs */}
-              <div className="h-9 bg-[#161b22] border-b border-[#21262d] flex items-center px-2 flex-shrink-0">
+            <div className="h-64 bg-[#0d1117] border border-[#30363d] rounded-xl flex flex-col overflow-hidden">
+              <div className="h-10 bg-[#161b22] border-b border-[#21262d] flex items-center px-3 flex-shrink-0 rounded-t-xl">
                 <button
                   onClick={() => setBottomPanelTab('console')}
                   className={`panel-tab ${bottomPanelTab === 'console' ? 'active' : ''}`}
@@ -791,61 +772,31 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
                 <button
                   onClick={() => setBottomPanelOpen(false)}
                   className="icon-btn p-1"
-                  title="Close Panel"
+                  title="Hide Output"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
 
-              {/* Terminal Content */}
-              <div className="flex-1 overflow-hidden bg-[#0d1117]">
+              <div className="flex-1 overflow-hidden">
                 <Terminal output={terminalOutput} />
               </div>
             </div>
           )}
         </div>
-
-        {/* Toggle Buttons for Panels */}
-        {!rightPanelOpen && (
-          <button
-            onClick={() => setRightPanelOpen(true)}
-            className="absolute right-4 top-16 z-10 p-2 bg-[#21262d] hover:bg-[#30363d] rounded-lg transition-colors"
-            title="Show Panel"
-          >
-            <PanelRightClose className="w-4 h-4 text-[#8b949e] rotate-180" />
-          </button>
-        )}
-
-        {!bottomPanelOpen && (
-          <button
-            onClick={() => setBottomPanelOpen(true)}
-            className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-10 flex items-center gap-2 px-3 py-1.5 bg-[#21262d] hover:bg-[#30363d] rounded-lg transition-colors text-sm text-[#8b949e] hover:text-white"
-          >
-            <TerminalIcon className="w-4 h-4" />
-            Console
-          </button>
-        )}
       </div>
 
-      {/* COI Warning Banner */}
-      {!isIsolated && (
-        <div className="absolute bottom-4 left-4 max-w-md bg-[#21262d] border border-[#f0883e]/50 rounded-xl p-4 text-sm animate-slide-up">
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-lg bg-[#f0883e]/20 flex items-center justify-center flex-shrink-0">
-              <Zap className="w-4 h-4 text-[#f0883e]" />
-            </div>
-            <div>
-              <div className="font-semibold text-[#f0883e]">WebContainers unavailable</div>
-              <div className="text-[#8b949e] text-xs mt-1">
-                Cross-origin isolation is disabled. The Run button won't work, but Preview is available.
-              </div>
-            </div>
-            <button className="text-[#8b949e] hover:text-white p-1">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
+      {!bottomPanelOpen && (
+        <button
+          onClick={() => setBottomPanelOpen(true)}
+          className="fixed bottom-4 right-6 z-10 flex items-center gap-2 px-3 py-1.5 bg-[#21262d] hover:bg-[#30363d] rounded-lg transition-colors text-sm text-[#8b949e] hover:text-white"
+        >
+          <TerminalIcon className="w-4 h-4" />
+          Output
+        </button>
       )}
+    </div>
+
     </div>
   );
 }
