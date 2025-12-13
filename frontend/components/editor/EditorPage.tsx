@@ -703,307 +703,154 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
         </div>
       </header>
 
-      {/* Main Content Area */}
+      {/* Main Content Area - Replit Style: AI Chat Left, Preview Right */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left Icon Sidebar */}
-        <div className="w-12 bg-[#0d1117] border-r border-[#21262d] flex flex-col items-center py-2 flex-shrink-0">
-          <button
-            onClick={() => {
-              setSidebarTab('files');
-              setLeftSidebarOpen(true);
-            }}
-            className={`sidebar-icon ${sidebarTab === 'files' && leftSidebarOpen ? 'active' : ''}`}
-            title="Files"
-          >
-            <Files className="w-5 h-5" />
-          </button>
-          <button
-            onClick={() => {
-              setSidebarTab('search');
-              setLeftSidebarOpen(true);
-            }}
-            className={`sidebar-icon ${sidebarTab === 'search' && leftSidebarOpen ? 'active' : ''}`}
-            title="Search"
-          >
-            <Search className="w-5 h-5" />
-          </button>
-          <button
-            onClick={() => {
-              setSidebarTab('git');
-              setLeftSidebarOpen(true);
-            }}
-            className={`sidebar-icon ${sidebarTab === 'git' && leftSidebarOpen ? 'active' : ''}`}
-            title="Version Control"
-          >
-            <GitBranch className="w-5 h-5" />
-          </button>
+        {/* Left Panel - AI Chat */}
+        <div className="w-[50%] flex flex-col bg-[#0d1117] border-r border-[#21262d]">
+          {/* AI Status Header */}
+          <div className="px-4 py-3 border-b border-[#21262d] bg-[#0b0f14] flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center flex-shrink-0">
+              <Sparkles className="w-5 h-5 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-white">{activeProjectName || 'FinalCode'}</p>
+              <p className="text-xs text-[#8b949e] truncate" title={agentStatus}>
+                {agentStatus}
+              </p>
+            </div>
+            <button
+              onClick={() => setShowAISettings(true)}
+              className="p-2 hover:bg-[#21262d] rounded-lg transition-colors"
+              title="AI Settings"
+            >
+              <Settings className="w-4 h-4 text-[#8b949e]" />
+            </button>
+          </div>
 
-          <div className="flex-1" />
+          {/* AI Chat Area */}
+          <div className="flex-1 overflow-hidden">
+            <AIChat
+              onCodeGenerated={handleAICodeGenerated}
+              onReplaceAllFiles={handleReplaceAllFiles}
+              currentFiles={files}
+              onStatusChange={setAgentStatus}
+            />
+          </div>
 
-          <button
-            onClick={() => setLeftSidebarOpen(!leftSidebarOpen)}
-            className="sidebar-icon"
-            title={leftSidebarOpen ? 'Hide Sidebar' : 'Show Sidebar'}
-          >
-            <PanelLeftClose className={`w-5 h-5 transition-transform ${!leftSidebarOpen ? 'rotate-180' : ''}`} />
-          </button>
+          {/* Bottom Input Hint */}
+          <div className="px-4 py-2 border-t border-[#21262d] bg-[#0b0f14]">
+            <p className="text-xs text-[#6e7681] text-center">
+              Describe what you want to build and AI will generate the code
+            </p>
+          </div>
         </div>
 
-        {/* Left Secondary Sidebar (File Tree) */}
-        {leftSidebarOpen && (
-          <div className="w-60 bg-[#161b22] border-r border-[#30363d] flex flex-col flex-shrink-0 animate-slide-right">
-            {sidebarTab === 'files' && (
-              <>
-                <div className="h-10 px-3 flex items-center justify-between border-b border-[#21262d]">
-                  <span className="text-xs font-semibold text-[#8b949e] uppercase tracking-wider">Files</span>
-                  <button
-                    onClick={() => {
-                      const name = prompt('Enter filename (e.g., app.js):');
-                      if (name) handleCreateFile(name);
-                    }}
-                    className="p-1 hover:bg-[#21262d] rounded transition-colors"
-                    title="New File"
-                  >
-                    <Plus className="w-4 h-4 text-[#8b949e]" />
-                  </button>
-                </div>
-                <FileTree
-                  files={files}
-                  activeFile={activeFile}
-                  onSelectFile={handleSelectFile}
-                  onDeleteFile={handleDeleteFile}
-                />
-              </>
-            )}
-            {sidebarTab === 'search' && (
-              <div className="p-3">
-                <input
-                  type="text"
-                  placeholder="Search files..."
-                  className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#6e7681] focus:outline-none focus:border-[#58a6ff]"
-                />
-                <p className="text-xs text-[#6e7681] mt-3 text-center">Search functionality coming soon</p>
-              </div>
-            )}
-            {sidebarTab === 'git' && (
-              <div className="p-3 space-y-3 text-sm text-white">
-                <div>
-                  <p className="text-xs font-semibold text-[#8b949e] uppercase tracking-wider">GitHub Sync</p>
-                  <p className="text-[11px] text-[#6e7681]">Pull an existing repo or push AI changes back.</p>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[11px] text-[#8b949e]">Repository (owner/name)</label>
-                  <input
-                    value={githubRepo}
-                    onChange={(e) => setGithubRepo(e.target.value)}
-                    placeholder="acme/my-repo"
-                    className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#6e7681] focus:outline-none focus:border-[#58a6ff]"
-                  />
-                </div>
-
-                <div className="flex gap-2">
-                  <div className="flex-1 space-y-1">
-                    <label className="text-[11px] text-[#8b949e]">Branch</label>
-                    <input
-                      value={githubBranch}
-                      onChange={(e) => setGithubBranch(e.target.value)}
-                      placeholder="main"
-                      className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#6e7681] focus:outline-none focus:border-[#58a6ff]"
-                    />
-                  </div>
-                  <div className="flex-1 space-y-1">
-                    <label className="text-[11px] text-[#8b949e]">Commit Message</label>
-                    <input
-                      value={gitCommitMessage}
-                      onChange={(e) => setGitCommitMessage(e.target.value)}
-                      className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#6e7681] focus:outline-none focus:border-[#58a6ff]"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[11px] text-[#8b949e]">GitHub Token (never sent to AI)</label>
-                  <input
-                    type="password"
-                    value={githubToken}
-                    onChange={(e) => setGithubToken(e.target.value)}
-                    placeholder="ghp_xxx..."
-                    className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#6e7681] focus:outline-none focus:border-[#58a6ff]"
-                  />
-                  <p className="text-[11px] text-[#6e7681]">Stored locally in your browser for this workspace.</p>
-                </div>
-
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleGithubPull}
-                    disabled={gitLoading === 'pull'}
-                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      gitLoading === 'pull'
-                        ? 'bg-[#21262d] text-[#8b949e] cursor-not-allowed'
-                        : 'bg-[#1f6feb] hover:bg-[#388bfd] text-white'
-                    }`}
-                  >
-                    {gitLoading === 'pull' ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                    Pull
-                  </button>
-                  <button
-                    onClick={handleGithubPush}
-                    disabled={gitLoading === 'push'}
-                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      gitLoading === 'push'
-                        ? 'bg-[#21262d] text-[#8b949e] cursor-not-allowed'
-                        : 'bg-[#238636] hover:bg-[#2ea043] text-white'
-                    }`}
-                  >
-                    {gitLoading === 'push' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                    Push
-                  </button>
-                </div>
-
-                {gitStatus && <p className="text-[11px] text-[#9ca3af]">{gitStatus}</p>}
-              </div>
-            )}
+        {/* Right Panel - Preview */}
+        <div className="flex-1 flex flex-col bg-[#161b22]">
+          {/* Preview Header */}
+          <div className="h-12 px-4 flex items-center justify-between border-b border-[#21262d] bg-[#0d1117]">
+            <div className="flex items-center gap-2 text-white text-sm font-medium">
+              <Eye className="w-4 h-4 text-[#58a6ff]" />
+              Preview
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setLeftSidebarOpen(!leftSidebarOpen)}
+                className="p-1.5 hover:bg-[#21262d] rounded-lg transition-colors"
+                title="Toggle Files"
+              >
+                <Files className="w-4 h-4 text-[#8b949e]" />
+              </button>
+              <button
+                onClick={() => setBottomPanelOpen(!bottomPanelOpen)}
+                className="p-1.5 hover:bg-[#21262d] rounded-lg transition-colors"
+                title="Toggle Console"
+              >
+                <TerminalIcon className="w-4 h-4 text-[#8b949e]" />
+              </button>
+            </div>
           </div>
-        )}
 
-        {/* Main workspace aligned to left editor/AI and right preview/output */}
-        <div className="flex-1 flex overflow-hidden gap-3 p-3">
-          <div className="flex-[0.55] flex flex-col bg-[#0d1117] border border-[#30363d] rounded-xl overflow-hidden">
-            <div className="h-9 bg-[#161b22] border-b border-[#21262d] flex items-center overflow-x-auto flex-shrink-0">
-              {openFiles.map((filename) => (
-                <div
-                  key={filename}
-                  onClick={() => setActiveFile(filename)}
-                  className={`group flex items-center gap-2 px-3 h-full border-r border-[#21262d] cursor-pointer transition-colors min-w-0 ${
-                    activeFile === filename
-                      ? 'bg-[#0d1117] text-white'
-                      : 'text-[#8b949e] hover:text-white hover:bg-[#21262d]'
-                  }`}
-                >
-                  <FileCode className={`w-3.5 h-3.5 flex-shrink-0 ${getFileIcon(filename)}`} />
-                  <span className="text-xs truncate">{filename}</span>
-                  {openFiles.length > 1 && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleCloseTab(filename);
-                      }}
-                      className="opacity-0 group-hover:opacity-100 hover:bg-[#30363d] rounded p-0.5 transition-opacity"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
+          {/* Preview Content */}
+          <div className="flex-1 bg-white overflow-hidden">
+            <Preview files={files} />
+          </div>
 
-            <div className="flex-1 overflow-hidden bg-[#0d1117]">
-              <CodeEditor code={files[activeFile] ?? ''} onChange={handleCodeChange} filename={activeFile} />
-            </div>
-
-            <div className="h-72 border-t border-[#30363d] bg-[#0d1117] flex flex-col">
-              <div className="px-4 py-3 border-b border-[#21262d] bg-[#0b0f14] flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-[#1f2937] flex items-center justify-center flex-shrink-0">
-                  <Sparkles className="w-5 h-5 text-[#58a6ff]" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-[#8b949e] uppercase tracking-wider">AI Agent</p>
-                  <p className="text-sm text-white truncate" title={agentStatus}>
-                    {agentStatus}
-                  </p>
-                </div>
+          {/* Optional Console Panel */}
+          {bottomPanelOpen && (
+            <div className="h-48 bg-[#0d1117] border-t border-[#21262d] flex flex-col">
+              <div className="h-9 bg-[#161b22] border-b border-[#21262d] flex items-center px-3 flex-shrink-0">
                 <button
-                  onClick={() => setShowAISettings(true)}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-[#21262d] hover:bg-[#30363d] rounded-lg text-sm text-white transition-colors"
+                  onClick={() => setBottomPanelTab('console')}
+                  className={`panel-tab ${bottomPanelTab === 'console' ? 'active' : ''}`}
                 >
-                  <Settings className="w-4 h-4" />
-                  Model Settings
+                  <Code2 className="w-3.5 h-3.5 inline mr-1.5" />
+                  Console
+                </button>
+                <button
+                  onClick={() => setBottomPanelTab('terminal')}
+                  className={`panel-tab ${bottomPanelTab === 'terminal' ? 'active' : ''}`}
+                >
+                  <TerminalIcon className="w-3.5 h-3.5 inline mr-1.5" />
+                  Shell
+                </button>
+                <div className="flex-1" />
+                <button
+                  onClick={() => setTerminalOutput(['> FinalCode Terminal Ready', ''])}
+                  className="icon-btn p-1"
+                  title="Clear Console"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => setBottomPanelOpen(false)}
+                  className="icon-btn p-1"
+                  title="Hide Console"
+                >
+                  <X className="w-3.5 h-3.5" />
                 </button>
               </div>
-
-              <div className="h-12 px-4 flex items-center border-b border-[#21262d]">
-                <div>
-                  <p className="text-xs text-[#8b949e] uppercase tracking-wider">AI Assistant</p>
-                  <p className="text-sm text-white">Model selection & prompts</p>
-                </div>
-              </div>
               <div className="flex-1 overflow-hidden">
-                <AIChat
-                  onCodeGenerated={handleAICodeGenerated}
-                  onReplaceAllFiles={handleReplaceAllFiles}
-                  currentFiles={files}
-                  onStatusChange={setAgentStatus}
-                />
+                <Terminal output={terminalOutput} />
               </div>
             </div>
-          </div>
-
-          <div className="flex-[0.45] flex flex-col gap-3 overflow-hidden">
-            <div className="flex-1 bg-white border border-[#30363d] rounded-xl overflow-hidden flex flex-col">
-              <div className="h-12 px-4 flex items-center justify-between border-b border-[#30363d] bg-[#0d1117]">
-                <div className="flex items-center gap-2 text-white text-sm font-medium">
-                  <Eye className="w-4 h-4 text-[#58a6ff]" />
-                  Live Preview
-                </div>
-              </div>
-              <div className="flex-1">
-                <Preview files={files} />
-              </div>
-            </div>
-
-            {bottomPanelOpen && (
-              <div className="h-64 bg-[#0d1117] border border-[#30363d] rounded-xl flex flex-col overflow-hidden">
-                <div className="h-10 bg-[#161b22] border-b border-[#21262d] flex items-center px-3 flex-shrink-0 rounded-t-xl">
-                  <button
-                    onClick={() => setBottomPanelTab('console')}
-                    className={`panel-tab ${bottomPanelTab === 'console' ? 'active' : ''}`}
-                  >
-                    <Code2 className="w-3.5 h-3.5 inline mr-1.5" />
-                    Console
-                  </button>
-                  <button
-                    onClick={() => setBottomPanelTab('terminal')}
-                    className={`panel-tab ${bottomPanelTab === 'terminal' ? 'active' : ''}`}
-                  >
-                    <TerminalIcon className="w-3.5 h-3.5 inline mr-1.5" />
-                    Shell
-                  </button>
-                  <div className="flex-1" />
-                  <button
-                    onClick={() => setTerminalOutput(['> FinalCode Terminal Ready', ''])}
-                    className="icon-btn p-1"
-                    title="Clear Console"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => setBottomPanelOpen(false)}
-                    className="icon-btn p-1"
-                    title="Hide Output"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-
-                <div className="flex-1 overflow-hidden">
-                  <Terminal output={terminalOutput} />
-                </div>
-              </div>
-            )}
-          </div>
+          )}
         </div>
-      </div>
 
-      {!bottomPanelOpen && (
-        <button
-          onClick={() => setBottomPanelOpen(true)}
-          className="fixed bottom-4 right-6 z-10 flex items-center gap-2 px-3 py-1.5 bg-[#21262d] hover:bg-[#30363d] rounded-lg transition-colors text-sm text-[#8b949e] hover:text-white"
-        >
-          <TerminalIcon className="w-4 h-4" />
-          Output
-        </button>
-      )}
+        {/* Files Sidebar (slides in from right when toggled) */}
+        {leftSidebarOpen && (
+          <div className="w-60 bg-[#161b22] border-l border-[#30363d] flex flex-col flex-shrink-0">
+            <div className="h-10 px-3 flex items-center justify-between border-b border-[#21262d]">
+              <span className="text-xs font-semibold text-[#8b949e] uppercase tracking-wider">Files</span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => {
+                    const name = prompt('Enter filename (e.g., app.js):');
+                    if (name) handleCreateFile(name);
+                  }}
+                  className="p-1 hover:bg-[#21262d] rounded transition-colors"
+                  title="New File"
+                >
+                  <Plus className="w-4 h-4 text-[#8b949e]" />
+                </button>
+                <button
+                  onClick={() => setLeftSidebarOpen(false)}
+                  className="p-1 hover:bg-[#21262d] rounded transition-colors"
+                  title="Close"
+                >
+                  <X className="w-4 h-4 text-[#8b949e]" />
+                </button>
+              </div>
+            </div>
+            <FileTree
+              files={files}
+              activeFile={activeFile}
+              onSelectFile={handleSelectFile}
+              onDeleteFile={handleDeleteFile}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
