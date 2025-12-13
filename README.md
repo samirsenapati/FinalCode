@@ -19,81 +19,69 @@ Build apps by simply describing what you want. FinalCode uses AI to generate cle
 
 ---
 
-## 🛠️ Quick Setup (5 minutes)
+## Production Deploy Path (Vercel)
 
-### Step 1: Download the Project
+Goal: **users only sign up and use FinalCode**. Supabase is backend infra owned by you.
+Users never configure Supabase or any keys.
 
-If you have Git installed:
-```bash
-git clone https://github.com/YOUR_USERNAME/finalcode.git
-cd finalcode
-```
+### 1) Supabase (owned by you)
 
-Or download as ZIP from GitHub and extract it.
+In your Supabase project:
+1. Run migrations in `supabase/migrations/` (recommended if you use Supabase CLI), or run SQL in Supabase SQL Editor.
+2. Ensure Auth providers are enabled (Email/Password, and optionally GitHub).
+3. Set redirect URLs (see below).
 
-### Step 2: Install Dependencies
+### 2) Vercel deploy
 
-This repo uses **Yarn**:
+1. Push this repo to GitHub.
+2. In Vercel: **New Project** → import the repo.
+3. **Root Directory**: `frontend`
+4. Build Command: `yarn build`
+5. Output: (leave default)
+6. Install Command: `yarn install`
+7. Add the environment variables below.
+8. Deploy.
+
+### 3) Required Vercel Environment Variables
+
+Supabase:
+- `NEXT_PUBLIC_SUPABASE_URL` (required)
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` (required)
+- `SUPABASE_SERVICE_ROLE_KEY` (required for Managed AI rate limits + usage caps)
+
+Auth redirects:
+- `NEXT_PUBLIC_SITE_URL` (required) → `https://YOUR_APP.vercel.app` (or your custom domain)
+
+Managed AI (server keys):
+- `OPENAI_API_KEY` (optional if you want OpenAI managed mode)
+- `ANTHROPIC_API_KEY` (optional if you want Anthropic managed mode)
+
+Optional:
+- `STRIPE_SECRET_KEY` etc (only needed if you enable billing routes)
+
+### 4) Supabase Auth Redirect URLs (local + prod)
+
+In Supabase Dashboard → Authentication → URL Configuration:
+- **Site URL**:
+  - Local: `http://localhost:3000`
+  - Prod: `https://YOUR_APP.vercel.app` (or custom domain)
+- **Redirect URLs** (add both):
+  - `http://localhost:3000/auth/callback`
+  - `https://YOUR_APP.vercel.app/auth/callback`
+
+This ensures Email confirm and GitHub OAuth redirects work in both environments.
+
+---
+
+## Local Development
 
 ```bash
 cd frontend
 yarn install
-```
-
-### Step 3: Configure AI (BYOK)
-
-FinalCode uses **BYOK (Bring Your Own Key)**:
-- You paste your OpenAI or Anthropic API key in the app (AI Settings)
-- The key is stored **only in your browser localStorage**
-- The key is **never stored in Supabase**
-
-⚠️ Because this MVP calls provider APIs directly from the browser, do not use highly privileged keys.
-
-### Step 4: Configure Supabase Auth + Database (Required)
-
-1. **Create a Supabase Project:**
-   - Go to [supabase.com](https://supabase.com)
-   - Create a new project or select an existing one
-   - Navigate to **Settings** → **API** to find your credentials
-
-2. **Enable Email Auth:**
-   - Go to **Authentication** → **Providers**
-   - Enable **Email** provider
-   - Configure email templates if desired
-
-3. **Create Database Tables (Projects + Files):**
-   - Go to **SQL Editor** in your Supabase dashboard
-   - Run: `supabase/sql/001_projects.sql`
-   - This creates `projects` + `project_files` tables and strict Row Level Security policies
-
-4. **Enable GitHub OAuth (Optional):**
-   - Go to **Authentication** → **Providers**
-   - Enable **GitHub** provider
-   - Follow [Supabase's GitHub OAuth guide](https://supabase.com/docs/guides/auth/social-login/auth-github) to create a GitHub OAuth App
-   - Add the callback URL: `https://your-project.supabase.co/auth/v1/callback`
-   - Copy your GitHub Client ID and Client Secret into Supabase
-
-5. **Add Environment Variables:**
-   - Copy `.env.example` to `.env.local`:
-     ```bash
-     cp .env.example .env.local
-     ```
-   - Add your Supabase credentials to `.env.local` (⚠️ **do not commit this file**):
-     ```
-     NEXT_PUBLIC_SUPABASE_URL=your-project-url
-     NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-     # Optional: only set if deployed somewhere other than localhost
-     NEXT_PUBLIC_SITE_URL=https://your-deployment-url
-     ```
-
-### Step 5: Run the App (Local)
-
-```bash
-cd frontend
 yarn dev
 ```
 
-Then open http://localhost:3000
+Open http://localhost:3000
 
 ### WebContainers note (important)
 
