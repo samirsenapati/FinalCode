@@ -70,14 +70,16 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
     return codeBlocks;
   };
 
-  // Send message to AI
+  // Send message to AI (BYOK: calls provider APIs directly from browser)
   const sendMessage = useCallback(async () => {
     if (!input.trim() || isLoading) return;
+
+    const userMessageText = input.trim();
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: input.trim(),
+      content: userMessageText,
       timestamp: new Date(),
     };
 
@@ -86,48 +88,65 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: input.trim(),
-          currentFiles,
-        }),
-      });
+      const { loadAISettings } = await import('@/lib/ai/settings');
+      const { generateAIResponse } = await import('@/lib/ai/providers');
+      const { checkAndIncrementRateLimit } = await import('@/lib/ai/rateLimit');
 
-      if (!response.ok) {
-        throw new Error('Failed to get response');
+      const rate = checkAndIncrementRateLimit({ maxRequests: 20, windowMs: 60_000 });
+      if (!rate.allowed) {
+        throw new Error(`Rate limit: wait ${Math.ceil(rate.retryAfterMs / 1000)}s and try again.`);
       }
 
-      const data = await response.json();
-      
+      const settings = loadAISettings();
+
+      const filesContext = Object.entries(currentFiles)
+        .map(([name, content]) => `### ${name}\n\`\`\`\n${content}\n\`\`\``)
+        .join('\n\n');
+
+      const userPrompt = `Current project files:\n${filesContext}\n\nUser request: ${userMessageText}\n\nPlease help with this request. If generating new code, provide complete files that can replace the current ones.`;
+
+      const responseText = await generateAIResponse({
+        settings,
+        systemPrompt: `You are FinalCode AI, an expert web developer assistant that helps users build applications through natural language.\n\nYour role:\n1. Generate clean, working code based on user descriptions\n2. Explain what you're creating in a friendly way\n3. Always provide complete, runnable code\n\nGuidelines:\n- Generate HTML, CSS, and JavaScript code that works together\n- Use modern, clean design with good UX\n- Include helpful comments in the code\n- Make the code responsive and accessible\n- Use vanilla JavaScript (no frameworks) unless specifically asked\n- Always use semantic HTML\n\nWhen generating code:\n- For complete apps, provide separate code blocks for HTML, CSS, and JavaScript\n- Label each code block clearly with the language (html, css, javascript)\n- Make sure the code is complete and can run immediately\n- Include any necessary error handling\n\nResponse format:\n1. Brief explanation of what you're creating\n2. Code blocks with language labels\n3. Optional: Tips or suggestions for customization\n\nKeep responses concise but complete. Focus on delivering working code quickly.`,
+        userPrompt,
+      });
+
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: data.response,
+        content: responseText,
         timestamp: new Date(),
       };
 
       setMessages(prev => [...prev, assistantMessage]);
 
-      // Extract and apply code
-      const codeBlocks = extractCode(data.response);
-      
-      // Check if we got multiple files (complete app generation)
-      if (data.files && Object.keys(data.files).length > 0) {
-        onReplaceAllFiles(data.files);
+      const codeBlocks = extractCode(responseText);
+
+      // If the assistant returned multiple file blocks, map common filenames
+      const extractedFiles: Record<string, string> = {};
+      for (const block of codeBlocks) {
+        if (block.language === 'html') extractedFiles['index.html'] = block.code;
+        if (block.language === 'css') extractedFiles['style.css'] = block.code;
+        if (block.language === 'javascript' || block.language === 'js') extractedFiles['script.js'] = block.code;
+      }
+
+      if (Object.keys(extractedFiles).length >= 2) {
+        onReplaceAllFiles({ ...currentFiles, ...extractedFiles });
       } else if (codeBlocks.length > 0) {
-        // Apply the last/main code block
         const mainCode = codeBlocks[codeBlocks.length - 1];
         onCodeGenerated(mainCode.code, mainCode.language);
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Chat error:', error);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: "I apologize, but I encountered an error. Please make sure your API key is configured in `.env.local`. Check the README for setup instructions.",
+        content:
+          `I couldn't reach your AI provider.\n\n` +
+          `• Open **AI Settings** and paste a valid API key (stored only in your browser).\n` +
+          `• Also check your network/CORS settings.\n\n` +
+          `Error: ${error?.message || 'Unknown error'}`,
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, errorMessage]);
