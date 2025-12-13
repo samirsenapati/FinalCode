@@ -130,17 +130,19 @@ export default function AISettingsModal({ open, onClose, onSaved }: Props) {
             </p>
           </label>
 
-          <label className="block space-y-2">
-            <span className="text-sm text-gray-300">API Key</span>
-            <input
-              type="password"
-              className="w-full rounded-lg bg-editor-bg border border-editor-border px-3 py-2 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
-              placeholder={settings.provider === 'openai' ? 'sk-...' : 'sk-ant-...'}
-              value={settings.apiKey}
-              onChange={(e) => setSettings((s) => ({ ...s, apiKey: e.target.value }))}
-              data-testid="ai-settings-api-key-input"
-            />
-          </label>
+          {settings.mode === 'byok' && (
+            <label className="block space-y-2">
+              <span className="text-sm text-gray-300">API Key (stored only in this browser)</span>
+              <input
+                type="password"
+                className="w-full rounded-lg bg-editor-bg border border-editor-border px-3 py-2 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                placeholder={settings.provider === 'openai' ? 'sk-...' : 'sk-ant-...'}
+                value={settings.apiKey}
+                onChange={(e) => setSettings((s) => ({ ...s, apiKey: e.target.value }))}
+                data-testid="ai-settings-api-key-input"
+              />
+            </label>
+          )}
 
           <div className="flex items-center justify-between gap-2 pt-2">
             <button
