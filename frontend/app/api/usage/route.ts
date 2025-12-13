@@ -5,6 +5,10 @@ import { getUserUsage } from '@/lib/usage/tracking';
 export async function GET(request: NextRequest) {
   try {
     const supabase = createClient();
+    if (!supabase) {
+      return NextResponse.json({ error: 'Supabase configuration is missing' }, { status: 500 });
+    }
+
     const {
       data: { session },
     } = await supabase.auth.getSession();
