@@ -24,6 +24,7 @@
     "@codemirror/view": "^6.28.0",
     "@sentry/nextjs": "^10.30.0",
     "@stripe/stripe-js": "^8.5.3",
+    "@supabase/postgrest-js": "^1.21.3",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.45.0",
     "@uiw/codemirror-theme-vscode": "^4.23.0",
