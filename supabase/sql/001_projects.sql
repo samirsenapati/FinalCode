@@ -9,6 +9,8 @@
 create extension if not exists pgcrypto;
 
 -- Projects table
+-- NOTE: If your Supabase already has a `public.projects` table (from older migrations),
+-- you should either drop/rename it before running this file or migrate it.
 create table if not exists public.projects (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
