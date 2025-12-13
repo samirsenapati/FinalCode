@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-type SyncAction = 'pull' | 'push';
+type SyncAction = 'pull' | 'push' | 'fetch';
 
 type GithubSyncRequest = {
   action: SyncAction;
@@ -157,6 +157,16 @@ export async function POST(request: NextRequest) {
       }
       const updated = await pushRepository({ repo, branch, token, files, message });
       return NextResponse.json({ updated });
+    }
+
+    if (action === 'fetch') {
+      const { owner, name } = parseRepo(repo);
+      const branchData = await fetchJson(`https://api.github.com/repos/${owner}/${name}/branches/${branch}`, token);
+      return NextResponse.json({ 
+        success: true, 
+        latestCommit: branchData?.commit?.sha?.slice(0, 7),
+        commitsBehind: 0
+      });
     }
 
     return NextResponse.json({ error: 'Unsupported action.' }, { status: 400 });
