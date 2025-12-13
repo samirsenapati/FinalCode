@@ -63,7 +63,7 @@ CREATE INDEX IF NOT EXISTS idx_projects_legacy_user_id ON public.projects_legacy
 ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.usage_tracking ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ai_request_logs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.projects_legacy ENABLE ROW LEVEL SECURITY;
 
 -- Policies for subscriptions table
 CREATE POLICY "Users can view their own subscription"
