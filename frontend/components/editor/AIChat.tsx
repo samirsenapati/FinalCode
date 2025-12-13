@@ -15,6 +15,7 @@ interface AIChatProps {
   onCodeGenerated: (code: string, language: string) => void;
   onReplaceAllFiles: (files: Record<string, string>) => void;
   currentFiles: Record<string, string>;
+  onStatusChange?: (status: string) => void;
 }
 
 import { loadAISettings, getActiveApiKey, AVAILABLE_MODELS } from '@/lib/ai/settings';
@@ -28,7 +29,7 @@ const EXAMPLE_PROMPTS = [
   "Build a simple game like tic-tac-toe",
 ];
 
-export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFiles }: AIChatProps) {
+export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFiles, onStatusChange }: AIChatProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -91,6 +92,9 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
+    onStatusChange?.('Thinking through your request and reviewing the project files...');
+
+    let hadError = false;
 
     try {
       const { loadAISettings } = await import('@/lib/ai/settings');
@@ -144,11 +148,14 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
       }
 
       if (Object.keys(extractedFiles).length >= 2) {
+        onStatusChange?.('Applying generated updates across your project files...');
         onReplaceAllFiles({ ...currentFiles, ...extractedFiles });
       } else if (codeBlocks.length > 0) {
         const mainCode = codeBlocks[codeBlocks.length - 1];
+        onStatusChange?.(`Updating ${mainCode.language || 'code'} to match your request...`);
         onCodeGenerated(mainCode.code, mainCode.language);
       }
+      onStatusChange?.('Done — preview the changes on the right.');
 
     } catch (error: any) {
       console.error('Chat error:', error);
@@ -163,11 +170,16 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, errorMessage]);
+      onStatusChange?.('AI request failed — check your settings and try again.');
+      hadError = true;
 
     } finally {
       setIsLoading(false);
+      if (!hadError) {
+        onStatusChange?.('Idle — ready for your next request');
+      }
     }
-  }, [input, isLoading, currentFiles, onCodeGenerated, onReplaceAllFiles]);
+  }, [input, isLoading, currentFiles, onCodeGenerated, onReplaceAllFiles, onStatusChange]);
 
   // Handle key press
   const handleKeyPress = (e: React.KeyboardEvent) => {
