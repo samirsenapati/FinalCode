@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/client';
 import type { FileMap, Project, ProjectFile } from '@/lib/projects/types';
 import { normalizeFilesToRows, rowsToFileMap } from '@/lib/projects/storage';
+import { canCreateProject, decrementProjectCount, incrementProjectCount } from '@/lib/usage/trackingClient';
 
 const PROJECTS_TABLE = 'projects';
 const PROJECT_FILES_TABLE = 'project_files';
