@@ -170,9 +170,9 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content:
-          `I couldn't reach your AI provider.\n\n` +
-          `• Open **AI Settings** and paste a valid API key (stored only in your browser).\n` +
-          `• Also check your network/CORS settings.\n\n` +
+          `AI request failed.\n\n` +
+          `• If you're using Managed AI, the server must be configured with provider keys and Supabase service role.\n` +
+          `• If you're using BYOK, open **AI Settings** and paste a valid key (stored only in your browser).\n\n` +
           `Error: ${error?.message || 'Unknown error'}`,
         timestamp: new Date(),
       };
