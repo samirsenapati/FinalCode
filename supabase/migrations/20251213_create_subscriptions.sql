@@ -104,8 +104,8 @@ CREATE POLICY "Service can insert AI request logs"
   WITH CHECK (true);
 
 -- Policies for legacy projects table
-CREATE POLICY "Users can view their own projects"
-  ON public.projects
+CREATE POLICY "Users can view their own legacy projects"
+  ON public.projects_legacy
   FOR SELECT
   USING (auth.uid() = user_id);
 
