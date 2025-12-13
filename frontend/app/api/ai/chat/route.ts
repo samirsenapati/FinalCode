@@ -168,12 +168,15 @@ export async function POST(request: NextRequest) {
 
     // Increment usage counter
     // usage_tracking has one row per day per user (initialized by trigger). Update the current active period row.
-    await admin
-      .from('usage_tracking')
-      .update({ ai_requests_count: aiRequestsToday + 1 })
-      .eq('user_id', user.id)
-      .gte('period_end', new Date().toISOString())
-      .catch(() => null);
+    try {
+      await admin
+        .from('usage_tracking')
+        .update({ ai_requests_count: aiRequestsToday + 1 })
+        .eq('user_id', user.id)
+        .gte('period_end', new Date().toISOString());
+    } catch {
+      // ignore
+    }
 
     // Extract basic files
     const extractedFiles: Record<string, string> = {};
