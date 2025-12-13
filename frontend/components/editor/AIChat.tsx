@@ -172,8 +172,17 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
     inputRef.current?.focus();
   };
 
+  const hasKey = (() => {
+    try {
+      const s = loadAISettings();
+      return Boolean(s.apiKey && s.apiKey.trim().length > 0);
+    } catch {
+      return false;
+    }
+  })();
+
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" data-testid="ai-chat">
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((message) => (
