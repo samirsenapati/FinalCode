@@ -391,6 +391,29 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
     }
   }, [files]);
 
+
+      <AISettingsModal
+        open={showAISettings}
+        onClose={() => setShowAISettings(false)}
+        onSaved={() => {
+          setTerminalOutput((prev) => [...prev, '> AI settings updated', '']);
+        }}
+      />
+
+      <ProjectModal
+        open={showProjectsModal}
+        onClose={() => setShowProjectsModal(false)}
+        projects={projects as any}
+        activeProjectId={activeProjectId}
+        onCreate={handleCreateProject}
+        onOpen={async (id) => {
+          await openProject(id);
+          setShowProjectsModal(false);
+        }}
+        onDelete={handleDeleteProject}
+        isBusy={saveStatus === 'saving'}
+      />
+
   // Deploy code to Cloudflare Pages
   const handleDeploy = useCallback(async () => {
     try {
