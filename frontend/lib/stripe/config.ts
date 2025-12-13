@@ -1,11 +1,19 @@
 import Stripe from 'stripe';
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('STRIPE_SECRET_KEY is not set in environment variables');
-}
+// Stripe is optional for Scope B. Avoid throwing during build if not configured.
+const stripeSecret = process.env.STRIPE_SECRET_KEY;
+
+export const stripe = stripeSecret
+  ? new Stripe(stripeSecret, {
+      // Keep in sync with installed stripe types
+      apiVersion: '2025-11-17.clover',
+      typescript: true,
+    })
+  : (null as any);
 
 // Initialize Stripe
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+// (when STRIPE_SECRET_KEY is missing, stripe is null and stripe routes should return 500)
+
   // Keep in sync with installed stripe types
   apiVersion: '2025-11-17.clover',
   typescript: true,
