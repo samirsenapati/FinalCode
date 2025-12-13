@@ -153,6 +153,16 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, errorMessage]);
+      {/* BYOK notice */}
+      <div className="px-4 pt-3" data-testid="ai-chat-byok-notice">
+        <div className="rounded-lg border border-editor-border bg-editor-bg px-3 py-2 text-xs text-gray-400">
+          <span className="font-semibold text-gray-200">BYOK:</span> Your AI key stays in your browser only.
+          {!hasKey && (
+            <span className="ml-2 text-yellow-300">No key set — open AI Settings in the top bar.</span>
+          )}
+        </div>
+      </div>
+
     } finally {
       setIsLoading(false);
     }
