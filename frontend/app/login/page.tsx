@@ -12,7 +12,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const supabase = createClient();
 
   if (!supabase) {
-    return <AuthForm configMissing errorMessage={stringifyError(searchParams?.error)} />;
+    return redirect('/admin-setup');
   }
 
   const {
