@@ -68,6 +68,7 @@ export default function FileTree({ files, activeFile, onSelectFile, onDeleteFile
               }}
               className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 rounded transition-all"
               title="Delete file"
+              data-testid={`filetree-delete-${filename}`}
             >
               <Trash2 className="w-3.5 h-3.5 text-red-400" />
             </button>
