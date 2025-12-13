@@ -641,11 +641,14 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
             )}
             Run
           </button>
+          {/* Deploy + Share (out of scope for Phase 2+3 MVP) intentionally hidden */}
+          {/* 
           <button
             onClick={handleSharePreview}
             disabled={isSharingPreview}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
             title="Create a temporary shareable preview link (expires in 24 hours)"
+            data-testid="topbar-share-button"
           >
             {isSharingPreview ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -659,6 +662,7 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
             disabled={isDeploying}
             className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
             title="Deploy to Cloudflare Pages"
+            data-testid="topbar-deploy-button"
           >
             {isDeploying ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -667,6 +671,7 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
             )}
             Deploy
           </button>
+          */}
         </div>
       </header>
 
