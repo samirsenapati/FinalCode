@@ -5,9 +5,8 @@ export function createClient() {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    console.warn(
-      'Supabase environment variables are missing. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to enable authentication.'
-    );
+    // In production SaaS, missing env vars means admin setup is required.
+    console.warn('FinalCode admin setup required: missing Supabase env vars.');
     return null;
   }
 
