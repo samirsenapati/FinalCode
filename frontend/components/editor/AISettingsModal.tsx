@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { X, KeyRound, AlertTriangle } from 'lucide-react';
-import type { AIProvider, AISettings } from '@/lib/ai/settings';
+import type { AIProvider, AISettings, AIMode } from '@/lib/ai/settings';
 import { DEFAULT_AI_SETTINGS, loadAISettings, saveAISettings, clearAISettings } from '@/lib/ai/settings';
 
 type Props = {
