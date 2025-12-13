@@ -11,6 +11,7 @@ export interface UsageLimits {
 
 export async function getUserUsage(userId: string): Promise<UsageLimits | null> {
   const supabase = createClient();
+  if (!supabase) return null;
 
   const { data, error } = await supabase.rpc('get_user_usage', {
     p_user_id: userId,
