@@ -124,8 +124,8 @@ CREATE POLICY "Users can update their own legacy projects"
   FOR UPDATE
   USING (auth.uid() = user_id);
 
-CREATE POLICY "Users can delete their own projects"
-  ON public.projects
+CREATE POLICY "Users can delete their own legacy projects"
+  ON public.projects_legacy
   FOR DELETE
   USING (auth.uid() = user_id);
 
