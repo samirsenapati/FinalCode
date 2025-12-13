@@ -67,6 +67,32 @@ export default function AISettingsModal({ open, onClose, onSaved }: Props) {
             </div>
           </div>
 
+
+          <label className="block space-y-2">
+            <span className="text-sm text-gray-300">Mode</span>
+            <div className="grid grid-cols-2 gap-2" data-testid="ai-settings-mode-toggle">
+              {([
+                { value: 'managed', label: 'Managed (default)', help: 'Uses server-side keys and per-user caps' },
+                { value: 'byok', label: 'BYOK', help: 'Uses your browser-stored key' },
+              ] as { value: AIMode; label: string; help: string }[]).map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setSettings((s) => ({ ...s, mode: opt.value }))}
+                  className={`rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
+                    settings.mode === opt.value
+                      ? 'border-purple-500 bg-purple-500/10 text-white'
+                      : 'border-editor-border bg-editor-bg text-gray-200 hover:bg-white/5'
+                  }`}
+                  data-testid={`ai-settings-mode-${opt.value}`}
+                >
+                  <div className="font-semibold">{opt.label}</div>
+                  <div className="text-xs text-gray-400">{opt.help}</div>
+                </button>
+              ))}
+            </div>
+          </label>
+
           <label className="block space-y-2">
             <span className="text-sm text-gray-300">Provider</span>
             <select
