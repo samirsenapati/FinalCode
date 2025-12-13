@@ -9,7 +9,7 @@ type AuthState = {
 };
 
 const missingConfigError =
-  'Supabase environment variables are missing. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to enable authentication.';
+  'Admin setup required: Supabase environment variables are missing on the server. Configure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.';
 
 function getSiteUrl() {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL;
