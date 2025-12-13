@@ -737,6 +737,7 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
                         ? 'bg-editor-bg text-white'
                         : 'text-gray-400 hover:text-white hover:bg-white/5'
                     }`}
+                    data-testid={`editor-tab-${filename}`}
                   >
                     <FileCode className="w-3.5 h-3.5" />
                     {filename}
