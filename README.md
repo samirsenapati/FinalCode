@@ -49,7 +49,7 @@ FinalCode uses **BYOK (Bring Your Own Key)**:
 
 ⚠️ Because this MVP calls provider APIs directly from the browser, do not use highly privileged keys.
 
-### Step 4: Configure Supabase Auth (Required)
+### Step 4: Configure Supabase Auth + Database (Required)
 
 1. **Create a Supabase Project:**
    - Go to [supabase.com](https://supabase.com)
