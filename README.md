@@ -33,6 +33,11 @@ In your Supabase project:
 2. Ensure Auth providers are enabled (Email/Password, and optionally GitHub).
 3. Set redirect URLs (see below).
 
+
+Database schema note:
+- This repo includes a migration `supabase/migrations/20251214_projects_normalized.sql` that creates the **normalized schema** (`projects` + `project_files`).
+- If you previously used the older JSONB schema, that migration will rename it to `projects_legacy` to avoid conflicts.
+
 ### 2) Vercel deploy
 
 1. Push this repo to GitHub.
