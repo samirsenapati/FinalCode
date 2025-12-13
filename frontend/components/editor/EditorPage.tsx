@@ -24,6 +24,7 @@ import Preview from '@/components/editor/Preview';
 import ProjectModal from '@/components/editor/ProjectModal';
 import Terminal from '@/components/editor/Terminal';
 import { useDebouncedCallback } from '@/lib/hooks/useDebouncedCallback';
+import { useCrossOriginIsolation } from '@/lib/hooks/useCrossOriginIsolation';
 import { useKeyboardShortcuts } from '@/lib/hooks/useKeyboardShortcuts';
 import { buildNodeRunShim, getDefaultRunEntry } from '@/lib/webcontainer/runnerUtils';
 import { runNodeScript, writeFilesToWebContainer } from '@/lib/webcontainer/runner';
