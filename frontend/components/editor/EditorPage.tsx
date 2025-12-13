@@ -714,7 +714,7 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
               </button>
             </div>
 
-            <div className="h-12 px-4 flex items-center justify-between border-b border-[#21262d]">
+            <div className="h-12 px-4 flex items-center border-b border-[#21262d]">
               <div>
                 <p className="text-xs text-[#8b949e] uppercase tracking-wider">AI Assistant</p>
                 <p className="text-sm text-white">Model selection & prompts</p>
@@ -804,25 +804,6 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
       )}
     </div>
 
-      {/* COI Warning Banner */}
-      {!isIsolated && (
-        <div className="absolute bottom-4 left-4 max-w-md bg-[#21262d] border border-[#f0883e]/50 rounded-xl p-4 text-sm animate-slide-up">
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-lg bg-[#f0883e]/20 flex items-center justify-center flex-shrink-0">
-              <Zap className="w-4 h-4 text-[#f0883e]" />
-            </div>
-            <div>
-              <div className="font-semibold text-[#f0883e]">WebContainers unavailable</div>
-              <div className="text-[#8b949e] text-xs mt-1">
-                Cross-origin isolation is disabled. The Run button won't work, but Preview is available.
-              </div>
-            </div>
-            <button className="text-[#8b949e] hover:text-white p-1">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
