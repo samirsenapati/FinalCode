@@ -233,6 +233,114 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
     }
   }, [files, activeFile]);
 
+
+  const openProject = useCallback(async (projectId: string) => {
+    try {
+      setSaveStatus('idle');
+      setSaveError(null);
+      const { project, files: projectFiles } = await getProjectWithFiles(projectId);
+      setActiveProjectId(project.id);
+      setActiveProjectName(project.name);
+      setFiles(Object.keys(projectFiles).length ? projectFiles : DEFAULT_FILES);
+      setActiveFile(Object.keys(projectFiles).length ? Object.keys(projectFiles)[0] : 'index.html');
+      setLastProjectId(project.id);
+      setTerminalOutput((prev) => [...prev, `> Opened project: ${project.name}`, '']);
+    } catch (e: any) {
+      setTerminalOutput((prev) => [...prev, `✗ Failed to open project: ${e?.message || e}`, '']);
+    }
+  }, []);
+
+  const refreshProjects = useCallback(async () => {
+    try {
+      const list = await listProjects();
+      setProjects(list);
+    } catch (e: any) {
+      // ignore
+    }
+  }, []);
+
+  // Initial projects load (after openProject is defined)
+  useEffect(() => {
+    (async () => {
+      try {
+        const list = await listProjects();
+        setProjects(list);
+
+        const last = getLastProjectId();
+        if (last && list.some((p: any) => p.id === last)) {
+          await openProject(last);
+        }
+      } catch (e: any) {
+        setTerminalOutput((prev) => [...prev, `⚠ Projects not loaded: ${e?.message || e}`, '']);
+      }
+    })();
+  }, [openProject]);
+
+  const handleCreateProject = useCallback(async (name: string) => {
+    try {
+      const { project } = await createProject({
+        name: safeProjectName(name),
+        description: null,
+        initialFiles: files,
+      });
+      await refreshProjects();
+      await openProject(project.id);
+      setShowProjectsModal(false);
+    } catch (e: any) {
+      setTerminalOutput((prev) => [...prev, `✗ Failed to create project: ${e?.message || e}`, '']);
+    }
+  }, [files, openProject, refreshProjects]);
+
+  const handleDeleteProject = useCallback(async (projectId: string) => {
+    try {
+      await deleteProject(projectId);
+      if (activeProjectId === projectId) {
+        setActiveProjectId(null);
+        setActiveProjectName('');
+        clearLastProjectId();
+        setFiles(DEFAULT_FILES);
+        setActiveFile('index.html');
+      }
+      await refreshProjects();
+    } catch (e: any) {
+      setTerminalOutput((prev) => [...prev, `✗ Failed to delete project: ${e?.message || e}`, '']);
+    }
+  }, [activeProjectId, refreshProjects]);
+
+  const doSaveNow = useCallback(async () => {
+    if (!activeProjectId) return;
+    setSaveStatus('saving');
+    setSaveError(null);
+    try {
+      await upsertProjectFiles(activeProjectId, files);
+      setSaveStatus('saved');
+      await refreshProjects();
+    } catch (e: any) {
+      setSaveStatus('error');
+      setSaveError(e?.message || String(e));
+    }
+  }, [activeProjectId, files, refreshProjects]);
+
+  const { debounced: debouncedSave } = useDebouncedCallback(doSaveNow, 1000);
+
+  // Auto-save when files change
+  useEffect(() => {
+    if (!activeProjectId) return;
+    debouncedSave();
+  }, [files, activeProjectId, debouncedSave]);
+
+  // Save on Ctrl+S / Cmd+S
+  useKeyboardShortcuts([
+    {
+      key: 's',
+      ctrl: true,
+      description: 'Save project',
+      action: () => {
+        doSaveNow();
+      },
+    },
+  ]);
+
   // Run code
   const handleRun = useCallback(() => {
     setIsRunning(true);
