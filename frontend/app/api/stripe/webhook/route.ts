@@ -7,6 +7,9 @@ import Stripe from 'stripe';
 // Disable body parsing, need raw body for webhook signature verification
 export const runtime = 'nodejs';
 
+// Stripe is optional for Scope B.
+
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
