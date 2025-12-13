@@ -94,9 +94,9 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
 
     try {
       const { loadAISettings } = await import('@/lib/ai/settings');
-      const { generateAIResponse } = await import('@/lib/ai/providers');
       const { checkAndIncrementRateLimit } = await import('@/lib/ai/rateLimit');
 
+      // Basic client-side rate limiting (applies to both modes to avoid spam clicks)
       const rate = checkAndIncrementRateLimit({ maxRequests: 20, windowMs: 60_000 });
       if (!rate.allowed) {
         throw new Error(`Rate limit: wait ${Math.ceil(rate.retryAfterMs / 1000)}s and try again.`);
@@ -110,11 +110,33 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
 
       const userPrompt = `Current project files:\n${filesContext}\n\nUser request: ${userMessageText}\n\nPlease help with this request. If generating new code, provide complete files that can replace the current ones.`;
 
-      const responseText = await generateAIResponse({
-        settings,
-        systemPrompt: `You are FinalCode AI, an expert web developer assistant that helps users build applications through natural language.\n\nYour role:\n1. Generate clean, working code based on user descriptions\n2. Explain what you're creating in a friendly way\n3. Always provide complete, runnable code\n\nGuidelines:\n- Generate HTML, CSS, and JavaScript code that works together\n- Use modern, clean design with good UX\n- Include helpful comments in the code\n- Make the code responsive and accessible\n- Use vanilla JavaScript (no frameworks) unless specifically asked\n- Always use semantic HTML\n\nWhen generating code:\n- For complete apps, provide separate code blocks for HTML, CSS, and JavaScript\n- Label each code block clearly with the language (html, css, javascript)\n- Make sure the code is complete and can run immediately\n- Include any necessary error handling\n\nResponse format:\n1. Brief explanation of what you're creating\n2. Code blocks with language labels\n3. Optional: Tips or suggestions for customization\n\nKeep responses concise but complete. Focus on delivering working code quickly.`,
-        userPrompt,
-      });
+      let responseText = '';
+
+      if (settings.mode === 'managed') {
+        const res = await fetch('/api/ai/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: userMessageText,
+            currentFiles,
+            provider: settings.provider,
+            model: settings.model,
+          }),
+        });
+
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(json?.error || `Managed AI failed (${res.status})`);
+        }
+        responseText = json?.response || '';
+      } else {
+        const { generateAIResponse } = await import('@/lib/ai/providers');
+        responseText = await generateAIResponse({
+          settings,
+          systemPrompt: `You are FinalCode AI, an expert web developer assistant that helps users build applications through natural language.\n\nYour role:\n1. Generate clean, working code based on user descriptions\n2. Explain what you're creating in a friendly way\n3. Always provide complete, runnable code\n\nGuidelines:\n- Generate HTML, CSS, and JavaScript code that works together\n- Use modern, clean design with good UX\n- Include helpful comments in the code\n- Make the code responsive and accessible\n- Use vanilla JavaScript (no frameworks) unless specifically asked\n- Always use semantic HTML\n\nWhen generating code:\n- For complete apps, provide separate code blocks for HTML, CSS, and JavaScript\n- Label each code block clearly with the language (html, css, javascript)\n- Make sure the code is complete and can run immediately\n- Include any necessary error handling\n\nResponse format:\n1. Brief explanation of what you're creating\n2. Code blocks with language labels\n3. Optional: Tips or suggestions for customization\n\nKeep responses concise but complete. Focus on delivering working code quickly.`,
+          userPrompt,
+        });
+      }
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
