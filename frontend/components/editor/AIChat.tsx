@@ -17,6 +17,8 @@ interface AIChatProps {
   currentFiles: Record<string, string>;
 }
 
+import { loadAISettings } from '@/lib/ai/settings';
+
 // Example prompts for inspiration
 const EXAMPLE_PROMPTS = [
   "Create a beautiful todo app with animations",
@@ -25,8 +27,6 @@ const EXAMPLE_PROMPTS = [
   "Create a calculator with a modern design",
   "Build a simple game like tic-tac-toe",
 ];
-
-import { loadAISettings } from '@/lib/ai/settings';
 
 export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFiles }: AIChatProps) {
   const [messages, setMessages] = useState<Message[]>([
