@@ -632,6 +632,7 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
             onClick={handleRun}
             disabled={isRunning}
             className="flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
+            data-testid="topbar-run-button"
           >
             {isRunning ? (
               <Loader2 className="w-4 h-4 animate-spin" />
