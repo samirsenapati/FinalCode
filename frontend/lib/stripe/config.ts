@@ -14,10 +14,6 @@ export const stripe = stripeSecret
 // Initialize Stripe
 // (when STRIPE_SECRET_KEY is missing, stripe is null and stripe routes should return 500)
 
-  // Keep in sync with installed stripe types
-  apiVersion: '2025-11-17.clover',
-  typescript: true,
-});
 
 // Pricing configuration
 export const PLANS = {
