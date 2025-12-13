@@ -8,6 +8,7 @@ Build apps by simply describing what you want. FinalCode uses AI to generate cle
 
 ## ✨ Features
 
+- **🔐 User Authentication** - Secure login with email/password or GitHub OAuth
 - **🤖 AI Code Generation** - Describe what you want, get working code
 - **📝 Professional Code Editor** - Syntax highlighting, autocomplete, VS Code theme
 - **👁️ Live Preview** - See changes in real-time
@@ -55,14 +56,35 @@ npm install
 
 ### Step 4: Configure Supabase Auth (Required)
 
-Add your Supabase project credentials to `.env.local` (do not commit this file):
+1. **Create a Supabase Project:**
+   - Go to [supabase.com](https://supabase.com)
+   - Create a new project or select an existing one
+   - Navigate to **Settings** → **API** to find your credentials
 
-```
-NEXT_PUBLIC_SUPABASE_URL=your-project-url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-# Optional: only set if your site is deployed somewhere other than localhost
-NEXT_PUBLIC_SITE_URL=https://your-deployment-url
-```
+2. **Enable Email Auth:**
+   - Go to **Authentication** → **Providers**
+   - Enable **Email** provider
+   - Configure email templates if desired
+
+3. **Enable GitHub OAuth (Optional):**
+   - Go to **Authentication** → **Providers**
+   - Enable **GitHub** provider
+   - Follow [Supabase's GitHub OAuth guide](https://supabase.com/docs/guides/auth/social-login/auth-github) to create a GitHub OAuth App
+   - Add the callback URL: `https://your-project.supabase.co/auth/v1/callback`
+   - Copy your GitHub Client ID and Client Secret into Supabase
+
+4. **Add Environment Variables:**
+   - Copy `.env.example` to `.env.local`:
+     ```bash
+     cp .env.example .env.local
+     ```
+   - Add your Supabase credentials to `.env.local` (⚠️ **do not commit this file**):
+     ```
+     NEXT_PUBLIC_SUPABASE_URL=your-project-url
+     NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+     # Optional: only set if deployed somewhere other than localhost
+     NEXT_PUBLIC_SITE_URL=https://your-deployment-url
+     ```
 
 ### Step 5: Run the App
 
@@ -145,6 +167,9 @@ finalcode/
 4. Import your GitHub repository
 5. Add environment variables:
    - `ANTHROPIC_API_KEY` = your API key
+   - `NEXT_PUBLIC_SUPABASE_URL` = your Supabase project URL
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = your Supabase anon key
+   - `NEXT_PUBLIC_SITE_URL` = your Vercel deployment URL (e.g., `https://your-app.vercel.app`)
 6. Click "Deploy"
 
 Your app will be live at `https://your-project.vercel.app`!
@@ -186,8 +211,8 @@ Your app will be live at `https://your-project.vercel.app`!
 
 ## 🛣️ Roadmap
 
-- [ ] **User Authentication** - Save projects to your account
-- [ ] **Database Integration** - Persist projects
+- [x] **User Authentication** - Secure login with Supabase ✅
+- [ ] **Database Integration** - Persist projects to your account
 - [ ] **Real Deployment** - Deploy user apps to custom URLs
 - [ ] **Collaboration** - Work together in real-time
 - [ ] **Templates** - Start from pre-built templates
@@ -215,6 +240,7 @@ MIT License - feel free to use this for your own projects!
 
 Built with:
 - [Next.js](https://nextjs.org/) - React framework
+- [Supabase](https://supabase.com/) - Authentication & database
 - [CodeMirror](https://codemirror.net/) - Code editor
 - [Tailwind CSS](https://tailwindcss.com/) - Styling
 - [Claude AI](https://anthropic.com/) - AI assistance
