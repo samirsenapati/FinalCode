@@ -16,35 +16,40 @@ export default function Terminal({ output }: TerminalProps) {
     }
   }, [output]);
 
-  // Style output lines
-  const styleLine = (line: string) => {
-    if (line.startsWith('✓')) {
-      return 'text-green-400';
-    } else if (line.startsWith('✗') || line.toLowerCase().includes('error')) {
-      return 'text-red-400';
+  // Style output lines based on content
+  const styleLine = (line: string): { color: string; prefix?: string } => {
+    if (line.startsWith('✓') || line.includes('success')) {
+      return { color: 'text-[#3fb950]' };
+    } else if (line.startsWith('✗') || line.toLowerCase().includes('error') || line.toLowerCase().includes('failed')) {
+      return { color: 'text-[#f85149]' };
     } else if (line.startsWith('>')) {
-      return 'text-blue-400';
-    } else if (line.startsWith('🔗')) {
-      return 'text-purple-400';
-    } else if (line.startsWith('⚠') || line.toLowerCase().includes('warning')) {
-      return 'text-yellow-400';
+      return { color: 'text-[#58a6ff]' };
+    } else if (line.startsWith('🔗') || line.startsWith('http')) {
+      return { color: 'text-[#a855f7]' };
+    } else if (line.startsWith('⚠') || line.toLowerCase().includes('warning') || line.toLowerCase().includes('warn')) {
+      return { color: 'text-[#d29922]' };
     }
-    return 'text-gray-300';
+    return { color: 'text-[#8b949e]' };
   };
 
   return (
     <div
       ref={terminalRef}
-      className="flex-1 overflow-y-auto p-4 bg-editor-bg font-mono text-sm terminal-output"
+      className="flex-1 overflow-y-auto px-4 py-3 bg-[#0d1117] font-mono text-[13px] leading-relaxed"
     >
-      {output.map((line, index) => (
-        <div key={index} className={`${styleLine(line)} leading-relaxed`}>
-          {line || '\u00A0'}
-        </div>
-      ))}
-      <div className="flex items-center gap-2 text-gray-500 mt-2">
-        <span className="text-green-400">❯</span>
-        <span className="animate-pulse">_</span>
+      {output.map((line, index) => {
+        const { color } = styleLine(line);
+        return (
+          <div key={index} className={`${color} whitespace-pre-wrap break-all`}>
+            {line || '\u00A0'}
+          </div>
+        );
+      })}
+
+      {/* Terminal prompt */}
+      <div className="flex items-center gap-2 text-[#6e7681] mt-3">
+        <span className="text-[#3fb950]">$</span>
+        <span className="w-2 h-4 bg-[#58a6ff] animate-pulse" />
       </div>
     </div>
   );
