@@ -59,6 +59,10 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription) {
 }
 
 export async function POST(request: NextRequest) {
+  if (!supabaseAdmin) {
+    return NextResponse.json({ error: 'Supabase is not configured' }, { status: 500 });
+  }
+
   const body = await request.text();
   const signature = request.headers.get('stripe-signature');
 
