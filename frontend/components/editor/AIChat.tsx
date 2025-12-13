@@ -273,6 +273,7 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
                 key={idx}
                 onClick={() => useExample(prompt)}
                 className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-2 py-1 rounded-full transition-colors"
+                data-testid={`ai-chat-example-${idx}`}
               >
                 {prompt.length > 30 ? prompt.slice(0, 30) + '...' : prompt}
               </button>
