@@ -184,6 +184,16 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
 
   return (
     <div className="flex flex-col h-full" data-testid="ai-chat">
+      {/* BYOK notice */}
+      <div className="px-4 pt-3" data-testid="ai-chat-byok-notice">
+        <div className="rounded-lg border border-editor-border bg-editor-bg px-3 py-2 text-xs text-gray-400">
+          <span className="font-semibold text-gray-200">BYOK:</span> Your AI key stays in your browser only.
+          {!hasKey && (
+            <span className="ml-2 text-yellow-300">No key set — open AI Settings in the top bar.</span>
+          )}
+        </div>
+      </div>
+
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((message) => (
