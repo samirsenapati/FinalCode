@@ -38,6 +38,7 @@ export async function getUserUsage(userId: string): Promise<UsageLimits | null> 
 
 export async function trackAIRequest(userId: string, requestType: string, tokensUsed?: number) {
   const supabase = createClient();
+  if (!supabase) return;
 
   // Log the request
   await supabase.from('ai_request_logs').insert({
