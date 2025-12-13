@@ -291,24 +291,6 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
 
   const { debounced: debouncedSave } = useDebouncedCallback(doSaveNow, 1000);
 
-
-      {!isIsolated && (
-        <div
-          className="mx-4 mt-3 rounded-xl border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-100"
-          data-testid="coi-warning-banner"
-        >
-          <div className="font-semibold">WebContainers needs cross-origin isolation</div>
-          <div className="text-yellow-100/90 mt-1">
-            This page is not cross-origin isolated (<code>crossOriginIsolated</code> is false). The Run button may not work.
-            Ensure your deployment preserves these headers:
-            <div className="mt-2 text-xs font-mono bg-black/20 rounded p-2 border border-yellow-500/20">
-              Cross-Origin-Opener-Policy: same-origin<br />
-              Cross-Origin-Embedder-Policy: require-corp
-            </div>
-          </div>
-        </div>
-      )}
-
   useEffect(() => {
     if (!activeProjectId) return;
     debouncedSave();
