@@ -113,22 +113,8 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
       let responseText = '';
 
       if (settings.mode === 'managed') {
-        const res = await fetch('/api/ai/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            message: userMessageText,
-            currentFiles,
-            provider: settings.provider,
-            model: settings.model,
-          }),
-        });
-
-        const json = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          throw new Error(json?.error || `Managed AI failed (${res.status})`);
-        }
-        responseText = json?.response || '';
+        const { callManagedAI } = await import('@/lib/ai/managedClient');
+        responseText = await callManagedAI({ settings, message: userMessageText, currentFiles });
       } else {
         const { generateAIResponse } = await import('@/lib/ai/providers');
         responseText = await generateAIResponse({
