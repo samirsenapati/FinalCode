@@ -183,14 +183,15 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
     inputRef.current?.focus();
   };
 
-  const hasKey = (() => {
+  const settingsSnapshot = (() => {
     try {
-      const s = loadAISettings();
-      return Boolean(s.apiKey && s.apiKey.trim().length > 0);
+      return loadAISettings();
     } catch {
-      return false;
+      return { mode: 'managed', provider: 'openai', apiKey: '', model: 'gpt-4.1-mini' } as any;
     }
   })();
+
+  const hasKey = Boolean(settingsSnapshot.apiKey && settingsSnapshot.apiKey.trim().length > 0);
 
   return (
     <div className="flex flex-col h-full" data-testid="ai-chat">
