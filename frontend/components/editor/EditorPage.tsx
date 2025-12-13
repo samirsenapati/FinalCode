@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
+import { useCallback, useEffect, useState, useTransition } from 'react';
 import {
   ChevronDown,
   Code2,
@@ -173,6 +173,41 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
   // Open files (tabs)
   const [openFiles, setOpenFiles] = useState<string[]>(['index.html']);
   const [agentStatus, setAgentStatus] = useState('Idle — ready for your next request');
+
+  // GitHub integration
+  const [githubRepo, setGithubRepo] = useState('');
+  const [githubBranch, setGithubBranch] = useState('main');
+  const [githubToken, setGithubToken] = useState('');
+  const [gitCommitMessage, setGitCommitMessage] = useState('Update via FinalCode AI');
+  const [gitStatus, setGitStatus] = useState<string | null>(null);
+  const [gitLoading, setGitLoading] = useState<'pull' | 'push' | null>(null);
+
+  // Persist GitHub connection details locally for convenience
+  useEffect(() => {
+    const savedRepo = localStorage.getItem('finalcode_github_repo');
+    const savedBranch = localStorage.getItem('finalcode_github_branch');
+    const savedToken = localStorage.getItem('finalcode_github_token');
+
+    if (savedRepo) setGithubRepo(savedRepo);
+    if (savedBranch) setGithubBranch(savedBranch);
+    if (savedToken) setGithubToken(savedToken);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('finalcode_github_repo', githubRepo);
+  }, [githubRepo]);
+
+  useEffect(() => {
+    localStorage.setItem('finalcode_github_branch', githubBranch);
+  }, [githubBranch]);
+
+  useEffect(() => {
+    if (githubToken) {
+      localStorage.setItem('finalcode_github_token', githubToken);
+    } else {
+      localStorage.removeItem('finalcode_github_token');
+    }
+  }, [githubToken]);
 
   const refreshProjects = useCallback(async () => {
     const list = await listProjects();
@@ -444,6 +479,107 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
     setTerminalOutput((prev) => [...prev, '> AI generated new project files', '']);
   }, []);
 
+  const handleGithubPull = useCallback(async () => {
+    if (!githubRepo.trim() || !githubToken.trim()) {
+      setGitStatus('Add a repository (owner/name) and a token to pull code.');
+      return;
+    }
+
+    setGitLoading('pull');
+    const repo = githubRepo.trim();
+    const branch = githubBranch.trim() || 'main';
+
+    setGitStatus(`Pulling ${repo} (${branch})...`);
+    setTerminalOutput((prev) => [...prev, `> Pulling ${repo} (${branch}) from GitHub...`, '']);
+    setAgentStatus(`Syncing with GitHub: loading ${repo} (${branch})`);
+
+    try {
+      const res = await fetch('/api/github/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'pull',
+          repo,
+          branch,
+          token: githubToken.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error || 'Failed to pull from GitHub.');
+      }
+
+      const pulledFiles = (data?.files || {}) as Record<string, string>;
+      const fileNames = Object.keys(pulledFiles);
+      if (fileNames.length === 0) {
+        throw new Error('No files returned from GitHub.');
+      }
+
+      setFiles(pulledFiles);
+      setActiveFile(fileNames[0]);
+      setOpenFiles([fileNames[0]]);
+
+      setGitStatus(`Pulled ${fileNames.length} files from ${repo} (${branch}).`);
+      setTerminalOutput((prev) => [...prev, `> Pulled ${fileNames.length} files from ${repo} (${branch})`, '']);
+      setAgentStatus(`Loaded code from ${repo} (${branch})`);
+    } catch (error: any) {
+      const message = error?.message || 'GitHub pull failed.';
+      setGitStatus(message);
+      setTerminalOutput((prev) => [...prev, `> GitHub pull failed: ${message}`, '']);
+      setAgentStatus('Idle — ready for your next request');
+    } finally {
+      setGitLoading(null);
+    }
+  }, [githubRepo, githubBranch, githubToken]);
+
+  const handleGithubPush = useCallback(async () => {
+    if (!githubRepo.trim() || !githubToken.trim()) {
+      setGitStatus('Add a repository (owner/name) and a token to push changes.');
+      return;
+    }
+
+    const repo = githubRepo.trim();
+    const branch = githubBranch.trim() || 'main';
+    const message = gitCommitMessage.trim() || 'Update via FinalCode AI';
+
+    setGitLoading('push');
+    setGitStatus(`Pushing ${repo} (${branch})...`);
+    setTerminalOutput((prev) => [...prev, `> Pushing ${repo} (${branch}) to GitHub...`, '']);
+    setAgentStatus(`Syncing changes to ${repo} (${branch})`);
+
+    try {
+      const res = await fetch('/api/github/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'push',
+          repo,
+          branch,
+          token: githubToken.trim(),
+          files,
+          message,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error || 'Failed to push to GitHub.');
+      }
+
+      setGitStatus(`Pushed ${data?.updated ?? 0} files to ${repo} (${branch}).`);
+      setTerminalOutput((prev) => [...prev, `> Pushed ${data?.updated ?? 0} files to ${repo} (${branch})`, '']);
+      setAgentStatus('Synced changes to GitHub');
+    } catch (error: any) {
+      const message = error?.message || 'GitHub push failed.';
+      setGitStatus(message);
+      setTerminalOutput((prev) => [...prev, `> GitHub push failed: ${message}`, '']);
+      setAgentStatus('Idle — ready for your next request');
+    } finally {
+      setGitLoading(null);
+    }
+  }, [files, gitCommitMessage, githubBranch, githubRepo, githubToken]);
+
   // File icon helper
   const getFileIcon = (filename: string) => {
     const ext = filename.split('.').pop()?.toLowerCase();
@@ -652,8 +788,90 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
             </div>
           )}
           {sidebarTab === 'git' && (
-            <div className="p-3">
-              <p className="text-xs text-[#6e7681] text-center">Version control coming soon</p>
+            <div className="p-3 space-y-3 text-sm text-white">
+              <div>
+                <p className="text-xs font-semibold text-[#8b949e] uppercase tracking-wider">GitHub Sync</p>
+                <p className="text-[11px] text-[#6e7681]">Pull an existing repo or push AI changes back.</p>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] text-[#8b949e]">Repository (owner/name)</label>
+                <input
+                  value={githubRepo}
+                  onChange={(e) => setGithubRepo(e.target.value)}
+                  placeholder="acme/my-repo"
+                  className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#6e7681] focus:outline-none focus:border-[#58a6ff]"
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <div className="flex-1 space-y-1">
+                  <label className="text-[11px] text-[#8b949e]">Branch</label>
+                  <input
+                    value={githubBranch}
+                    onChange={(e) => setGithubBranch(e.target.value)}
+                    placeholder="main"
+                    className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#6e7681] focus:outline-none focus:border-[#58a6ff]"
+                  />
+                </div>
+                <div className="flex-1 space-y-1">
+                  <label className="text-[11px] text-[#8b949e]">Commit Message</label>
+                  <input
+                    value={gitCommitMessage}
+                    onChange={(e) => setGitCommitMessage(e.target.value)}
+                    className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#6e7681] focus:outline-none focus:border-[#58a6ff]"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] text-[#8b949e]">GitHub Token (never sent to AI)</label>
+                <input
+                  type="password"
+                  value={githubToken}
+                  onChange={(e) => setGithubToken(e.target.value)}
+                  placeholder="ghp_xxx..."
+                  className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#6e7681] focus:outline-none focus:border-[#58a6ff]"
+                />
+                <p className="text-[11px] text-[#6e7681]">Stored locally in your browser for this workspace.</p>
+              </div>
+              <button
+                onClick={() => setShowAISettings(true)}
+                className="flex items-center gap-2 px-3 py-1.5 bg-[#21262d] hover:bg-[#30363d] rounded-lg text-sm text-white transition-colors"
+              >
+                <Settings className="w-4 h-4" />
+                Model Settings
+              </button>
+            </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={handleGithubPull}
+                  disabled={gitLoading === 'pull'}
+                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    gitLoading === 'pull'
+                      ? 'bg-[#21262d] text-[#8b949e] cursor-not-allowed'
+                      : 'bg-[#1f6feb] hover:bg-[#388bfd] text-white'
+                  }`}
+                >
+                  {gitLoading === 'pull' ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                  Pull
+                </button>
+                <button
+                  onClick={handleGithubPush}
+                  disabled={gitLoading === 'push'}
+                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    gitLoading === 'push'
+                      ? 'bg-[#21262d] text-[#8b949e] cursor-not-allowed'
+                      : 'bg-[#238636] hover:bg-[#2ea043] text-white'
+                  }`}
+                >
+                  {gitLoading === 'push' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                  Push
+                </button>
+              </div>
+
+              {gitStatus && <p className="text-[11px] text-[#9ca3af]">{gitStatus}</p>}
             </div>
           )}
         </div>
@@ -719,13 +937,6 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
                 <p className="text-xs text-[#8b949e] uppercase tracking-wider">AI Assistant</p>
                 <p className="text-sm text-white">Model selection & prompts</p>
               </div>
-              <button
-                onClick={() => setShowAISettings(true)}
-                className="flex items-center gap-2 px-3 py-1.5 bg-[#21262d] hover:bg-[#30363d] rounded-lg text-sm text-white transition-colors"
-              >
-                <Sparkles className="w-4 h-4" />
-                Model Settings
-              </button>
             </div>
             <div className="flex-1 overflow-hidden">
               <AIChat
