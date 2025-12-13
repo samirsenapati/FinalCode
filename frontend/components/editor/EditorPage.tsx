@@ -712,7 +712,7 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
               files={files}
               activeFile={activeFile}
               onSelectFile={setActiveFile}
-              onDeleteFile={handleDeleteFile}
+              onDeleteFile={handleDeleteFileAndPersist}
             />
           </aside>
         )}
