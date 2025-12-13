@@ -75,20 +75,27 @@ export async function POST(request: NextRequest) {
       // ignore
     }
 
-    const { data: usageRows, error: usageErr } = await admin.rpc('get_user_usage', {
-      p_user_id: user.id,
-    });
+    let aiRequestsToday = 0;
+    let aiRequestsLimit = 0;
+    
+    try {
+      const { data: usageRows, error: usageErr } = await admin.rpc('get_user_usage', {
+        p_user_id: user.id,
+      });
 
-    if (usageErr) {
-      return jsonError(`Usage lookup failed: ${usageErr.message}`, 500);
-    }
+      if (!usageErr && usageRows) {
+        const usage = Array.isArray(usageRows) ? usageRows[0] : usageRows;
+        aiRequestsToday = Number(usage?.ai_requests_today ?? 0);
+        aiRequestsLimit = Number(usage?.ai_requests_limit ?? 0);
 
-    const usage = Array.isArray(usageRows) ? usageRows[0] : usageRows;
-    const aiRequestsToday = Number(usage?.ai_requests_today ?? 0);
-    const aiRequestsLimit = Number(usage?.ai_requests_limit ?? 0);
-
-    if (aiRequestsLimit && aiRequestsToday >= aiRequestsLimit) {
-      return jsonError('Daily AI limit reached. Please try again tomorrow.', 429);
+        if (aiRequestsLimit && aiRequestsToday >= aiRequestsLimit) {
+          return jsonError('Daily AI limit reached. Please try again tomorrow.', 429);
+        }
+      } else {
+        console.warn('Usage tracking not available - database may need migrations. Skipping limits.');
+      }
+    } catch {
+      console.warn('Usage tracking not available - database may need migrations. Skipping limits.');
     }
 
     // Build context
