@@ -2,17 +2,30 @@
 
 import { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
 import {
+  ChevronDown,
+  ChevronRight,
+  Code2,
   Eye,
   FileCode,
+  Files,
   FolderOpen,
-  FolderTree,
+  GitBranch,
+  Globe,
   Loader2,
   LogOut,
+  MessageSquare,
+  MoreHorizontal,
+  PanelLeftClose,
+  PanelRightClose,
   Play,
   Plus,
+  RefreshCw,
+  Search,
   Settings,
   Sparkles,
   Terminal as TerminalIcon,
+  Upload,
+  X,
   Zap,
 } from 'lucide-react';
 import { signOut } from '@/app/actions/auth';
@@ -66,7 +79,7 @@ const DEFAULT_FILES: FileMap = {
 
 body {
   font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-  background: #0b1220;
+  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
   color: white;
   min-height: 100vh;
   display: grid;
@@ -75,28 +88,42 @@ body {
 
 .container {
   width: min(720px, 92vw);
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 16px;
-  padding: 28px;
-  box-shadow: 0 18px 40px rgba(0,0,0,0.35);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 20px;
+  padding: 40px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 25px 50px rgba(0,0,0,0.4);
 }
 
-h1 { font-size: 28px; margin-bottom: 12px; }
+h1 {
+  font-size: 32px;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, #60a5fa, #a78bfa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
 
-p { opacity: 0.9; margin-bottom: 10px; line-height: 1.5; }
+p { opacity: 0.85; margin-bottom: 12px; line-height: 1.6; }
 
 button {
-  margin-top: 10px;
+  margin-top: 16px;
   border: 0;
   background: linear-gradient(135deg, #3b82f6, #8b5cf6);
   color: white;
-  padding: 10px 16px;
-  border-radius: 10px;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 600;
   cursor: pointer;
+  transition: all 0.2s;
 }
 
-#output { margin-top: 12px; opacity: 0.95; }`,
+button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(59, 130, 246, 0.4);
+}
+
+#output { margin-top: 16px; font-weight: 500; }`,
   'script.js': `let clickCount = 0;
 
 document.getElementById('demo-btn').addEventListener('click', () => {
@@ -107,6 +134,10 @@ document.getElementById('demo-btn').addEventListener('click', () => {
 
 console.log('FinalCode app loaded');`,
 };
+
+type SidebarTab = 'files' | 'search' | 'git';
+type RightPanelTab = 'ai' | 'preview';
+type BottomPanelTab = 'console' | 'terminal';
 
 export default function EditorPage({ userEmail }: EditorPageProps) {
   const [isSigningOut, startSignOut] = useTransition();
@@ -125,11 +156,13 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  // UI panels
-  const [showFileTree, setShowFileTree] = useState(true);
-  const [showAIChat, setShowAIChat] = useState(true);
-  const [showTerminal, setShowTerminal] = useState(true);
-  const [showPreview, setShowPreview] = useState(true);
+  // Panel states
+  const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
+  const [rightPanelOpen, setRightPanelOpen] = useState(true);
+  const [bottomPanelOpen, setBottomPanelOpen] = useState(true);
+  const [sidebarTab, setSidebarTab] = useState<SidebarTab>('files');
+  const [rightPanelTab, setRightPanelTab] = useState<RightPanelTab>('preview');
+  const [bottomPanelTab, setBottomPanelTab] = useState<BottomPanelTab>('console');
 
   // Modals
   const [showAISettings, setShowAISettings] = useState(false);
@@ -144,6 +177,9 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
   const [isRunning, setIsRunning] = useState(false);
 
   const { isIsolated } = useCrossOriginIsolation();
+
+  // Open files (tabs)
+  const [openFiles, setOpenFiles] = useState<string[]>(['index.html']);
 
   const refreshProjects = useCallback(async () => {
     const list = await listProjects();
@@ -161,8 +197,10 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
     const fileMap = Object.keys(projectFiles).length ? projectFiles : DEFAULT_FILES;
     setFiles(fileMap);
 
-    const nextActive = fileMap[activeFile] ? activeFile : Object.keys(fileMap)[0];
+    const fileKeys = Object.keys(fileMap);
+    const nextActive = fileMap[activeFile] ? activeFile : fileKeys[0];
     setActiveFile(nextActive);
+    setOpenFiles([nextActive]);
 
     setSaveStatus('idle');
     setSaveError(null);
@@ -179,7 +217,7 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
           await openProject(last);
         }
       } catch (e: any) {
-        setTerminalOutput((prev) => [...prev, `⚠ Projects not loaded: ${e?.message || e}`, '']);
+        setTerminalOutput((prev) => [...prev, `> Projects not loaded: ${e?.message || e}`, '']);
       }
     })();
   }, [openProject, refreshProjects]);
@@ -196,7 +234,7 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
         await openProject(project.id);
         setShowProjectsModal(false);
       } catch (e: any) {
-        setTerminalOutput((prev) => [...prev, `✗ Failed to create project: ${e?.message || e}`, '']);
+        setTerminalOutput((prev) => [...prev, `> Failed to create project: ${e?.message || e}`, '']);
       }
     },
     [files, openProject, refreshProjects]
@@ -212,16 +250,37 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
           clearLastProjectId();
           setFiles(DEFAULT_FILES);
           setActiveFile('index.html');
+          setOpenFiles(['index.html']);
           setSaveStatus('idle');
           setSaveError(null);
         }
         await refreshProjects();
       } catch (e: any) {
-        setTerminalOutput((prev) => [...prev, `✗ Failed to delete project: ${e?.message || e}`, '']);
+        setTerminalOutput((prev) => [...prev, `> Failed to delete project: ${e?.message || e}`, '']);
       }
     },
     [activeProjectId, refreshProjects]
   );
+
+  const handleSelectFile = useCallback((filename: string) => {
+    setActiveFile(filename);
+    setOpenFiles((prev) => (prev.includes(filename) ? prev : [...prev, filename]));
+  }, []);
+
+  const handleCloseTab = useCallback((filename: string) => {
+    setOpenFiles((prev) => {
+      const next = prev.filter((f) => f !== filename);
+      if (next.length === 0) {
+        const firstFile = Object.keys(files)[0];
+        setActiveFile(firstFile);
+        return [firstFile];
+      }
+      if (activeFile === filename) {
+        setActiveFile(next[next.length - 1]);
+      }
+      return next;
+    });
+  }, [activeFile, files]);
 
   const handleCodeChange = useCallback(
     (newCode: string) => {
@@ -247,9 +306,9 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
       }
 
       setFiles((prev) => ({ ...prev, [filename]: content }));
-      setActiveFile(filename);
+      handleSelectFile(filename);
     },
-    [files]
+    [files, handleSelectFile]
   );
 
   const handleDeleteFile = useCallback(
@@ -262,9 +321,14 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
         return next;
       });
 
+      setOpenFiles((prev) => prev.filter((f) => f !== filename));
+
       if (activeFile === filename) {
         const nextActive = Object.keys(files).find((f) => f !== filename);
-        if (nextActive) setActiveFile(nextActive);
+        if (nextActive) {
+          setActiveFile(nextActive);
+          setOpenFiles((prev) => (prev.includes(nextActive) ? prev : [...prev, nextActive]));
+        }
       }
     },
     [activeFile, files]
@@ -272,7 +336,7 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
 
   const doSaveNow = useCallback(async () => {
     if (!activeProjectId) {
-      setTerminalOutput((prev) => [...prev, '⚠ Create a project first to enable autosave.', '']);
+      setTerminalOutput((prev) => [...prev, '> Create a project first to enable autosave.', '']);
       return;
     }
 
@@ -310,11 +374,14 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
   const handleRun = useCallback(async () => {
     try {
       setIsRunning(true);
+      setBottomPanelOpen(true);
+      setBottomPanelTab('console');
+
       if (!isIsolated) {
         setTerminalOutput((prev) => [
           ...prev,
-          '⚠ WebContainers is not available (crossOriginIsolated is false).',
-          'Run is disabled, but Preview still works. Ensure COOP/COEP headers are preserved.',
+          '> WebContainers is not available (crossOriginIsolated is false).',
+          '> Run is disabled, but Preview still works.',
           '',
         ]);
         return;
@@ -326,9 +393,9 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
       if (!entry) {
         setTerminalOutput((prev) => [
           ...prev,
-          '⚠ No runnable JS entry found for Node.',
-          'Create run.js (recommended) or script.js / index.js.',
-          'Tip: HTML projects can be previewed in the Preview panel without Run.',
+          '> No runnable JS entry found for Node.',
+          '> Create run.js, script.js, or index.js.',
+          '> Tip: HTML projects can be previewed in the Preview panel.',
           '',
         ]);
         return;
@@ -347,13 +414,13 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
         onOutput: (line) => setTerminalOutput((prev) => [...prev, line]),
       });
 
-      setTerminalOutput((prev) => [...prev, `✓ Exit code: ${result.exitCode}`, '']);
+      setTerminalOutput((prev) => [...prev, `> Exit code: ${result.exitCode}`, '']);
     } catch (e: any) {
-      setTerminalOutput((prev) => [...prev, `✗ Run failed: ${e?.message || e}`, '']);
+      setTerminalOutput((prev) => [...prev, `> Run failed: ${e?.message || e}`, '']);
     } finally {
       setIsRunning(false);
     }
-  }, [files]);
+  }, [files, isIsolated]);
 
   const handleAICodeGenerated = useCallback(
     (generatedCode: string, language: string) => {
@@ -370,20 +437,37 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
       }
 
       setFiles((prev) => ({ ...prev, [targetFile]: generatedCode }));
-      setActiveFile(targetFile);
+      handleSelectFile(targetFile);
       setTerminalOutput((prev) => [...prev, `> AI updated ${targetFile}`, '']);
     },
-    [activeFile]
+    [activeFile, handleSelectFile]
   );
 
   const handleReplaceAllFiles = useCallback((newFiles: Record<string, string>) => {
     setFiles(newFiles);
-    setActiveFile(Object.keys(newFiles)[0]);
+    const firstFile = Object.keys(newFiles)[0];
+    setActiveFile(firstFile);
+    setOpenFiles([firstFile]);
     setTerminalOutput((prev) => [...prev, '> AI generated new project files', '']);
   }, []);
 
+  // File icon helper
+  const getFileIcon = (filename: string) => {
+    const ext = filename.split('.').pop()?.toLowerCase();
+    const colors: Record<string, string> = {
+      html: 'text-orange-400',
+      css: 'text-blue-400',
+      js: 'text-yellow-400',
+      jsx: 'text-cyan-400',
+      ts: 'text-blue-500',
+      tsx: 'text-cyan-500',
+      json: 'text-yellow-300',
+    };
+    return colors[ext || ''] || 'text-gray-400';
+  };
+
   return (
-    <div className="h-screen flex flex-col bg-editor-bg" data-testid="editor-page">
+    <div className="h-screen flex flex-col bg-[#0d1117]" data-testid="editor-page">
       <AISettingsModal
         open={showAISettings}
         onClose={() => setShowAISettings(false)}
@@ -404,236 +488,364 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
         isBusy={saveStatus === 'saving'}
       />
 
-      {/* Top Bar */}
-      <header
-        className="h-12 bg-editor-sidebar border-b border-editor-border flex items-center justify-between px-4"
-        data-testid="topbar"
-      >
-        <div className="flex items-center gap-4">
-          {/* Brand */}
-          <div className="flex items-center gap-2" data-testid="topbar-brand">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-              <Zap className="w-5 h-5 text-white" />
+      {/* Top Header Bar - Replit Style */}
+      <header className="h-12 bg-[#161b22] border-b border-[#30363d] flex items-center justify-between px-3 flex-shrink-0">
+        <div className="flex items-center gap-3">
+          {/* Logo */}
+          <div className="flex items-center gap-2 pr-3 border-r border-[#30363d]">
+            <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+              <Zap className="w-4 h-4 text-white" />
             </div>
-            <span className="font-bold text-lg text-white">FinalCode</span>
+            <span className="font-semibold text-white text-sm hidden sm:block">FinalCode</span>
           </div>
 
-          {/* Project + AI settings */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowProjectsModal(true)}
-              className="flex items-center gap-2 bg-editor-bg border border-editor-border hover:bg-white/5 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-              data-testid="topbar-projects-button"
-            >
-              <FolderOpen className="w-4 h-4" />
-              <span className="hidden md:inline">{activeProjectName || 'Projects'}</span>
-            </button>
-            <button
-              onClick={() => setShowAISettings(true)}
-              className="flex items-center gap-2 bg-editor-bg border border-editor-border hover:bg-white/5 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-              data-testid="topbar-ai-settings-button"
-            >
-              <Settings className="w-4 h-4" />
-              <span className="hidden md:inline">AI Settings</span>
-            </button>
-          </div>
+          {/* Project Dropdown */}
+          <button
+            onClick={() => setShowProjectsModal(true)}
+            className="flex items-center gap-2 hover:bg-[#21262d] px-3 py-1.5 rounded-lg transition-colors"
+          >
+            <FolderOpen className="w-4 h-4 text-[#8b949e]" />
+            <span className="text-sm text-white font-medium max-w-[200px] truncate">
+              {activeProjectName || 'Select Project'}
+            </span>
+            <ChevronDown className="w-3 h-3 text-[#8b949e]" />
+          </button>
 
-          {/* Toggle Buttons */}
-          <div className="flex items-center gap-1 ml-2" data-testid="panel-toggles">
-            <button
-              onClick={() => setShowFileTree(!showFileTree)}
-              className={`p-2 rounded hover:bg-white/10 transition-colors ${showFileTree ? 'text-blue-400' : 'text-gray-500'}`}
-              title="Toggle File Tree"
-              data-testid="toggle-filetree-button"
-            >
-              <FolderTree className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setShowTerminal(!showTerminal)}
-              className={`p-2 rounded hover:bg-white/10 transition-colors ${showTerminal ? 'text-blue-400' : 'text-gray-500'}`}
-              title="Toggle Terminal"
-              data-testid="toggle-terminal-button"
-            >
-              <TerminalIcon className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setShowPreview(!showPreview)}
-              className={`p-2 rounded hover:bg-white/10 transition-colors ${showPreview ? 'text-blue-400' : 'text-gray-500'}`}
-              title="Toggle Preview"
-              data-testid="toggle-preview-button"
-            >
-              <Eye className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setShowAIChat(!showAIChat)}
-              className={`p-2 rounded hover:bg-white/10 transition-colors ${showAIChat ? 'text-blue-400' : 'text-gray-500'}`}
-              title="Toggle AI Chat"
-              data-testid="toggle-ai-chat-button"
-            >
-              <Sparkles className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center gap-2" data-testid="topbar-actions">
-          {userEmail && <span className="text-sm text-gray-300 hidden sm:inline">{userEmail}</span>}
-
+          {/* Save Status */}
           {activeProjectId && (
-            <div className="hidden sm:flex items-center gap-2 text-xs text-gray-400 mr-2" data-testid="save-status-indicator">
-              <span className="px-2 py-1 rounded bg-white/5 border border-editor-border">
-                {saveStatus === 'saving'
-                  ? 'Saving…'
-                  : saveStatus === 'saved'
-                    ? 'Saved'
-                    : saveStatus === 'error'
-                      ? 'Save error'
-                      : 'Idle'}
-              </span>
-              {saveStatus === 'error' && saveError && (
-                <span className="text-red-300 truncate max-w-[260px]" title={saveError} data-testid="save-status-error-text">
-                  {saveError}
-                </span>
+            <div className="flex items-center gap-1.5 text-xs text-[#8b949e]">
+              {saveStatus === 'saving' && (
+                <>
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  <span>Saving...</span>
+                </>
               )}
+              {saveStatus === 'saved' && <span className="text-green-400">Saved</span>}
+              {saveStatus === 'error' && <span className="text-red-400">Error saving</span>}
             </div>
           )}
+        </div>
 
+        {/* Right Actions */}
+        <div className="flex items-center gap-2">
+          {/* Git Branch */}
+          <button className="flex items-center gap-1.5 text-xs text-[#8b949e] hover:text-white px-2 py-1 rounded transition-colors">
+            <GitBranch className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">main</span>
+          </button>
+
+          {/* AI Settings */}
+          <button
+            onClick={() => setShowAISettings(true)}
+            className="icon-btn"
+            title="AI Settings"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
+
+          {/* User */}
+          {userEmail && (
+            <span className="text-xs text-[#8b949e] hidden lg:block px-2">{userEmail}</span>
+          )}
+
+          {/* Logout */}
           <button
             onClick={() => startSignOut(() => signOut())}
             disabled={isSigningOut}
-            className="flex items-center gap-2 bg-editor-bg border border-editor-border hover:bg-white/5 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-            data-testid="topbar-logout-button"
+            className="icon-btn"
+            title="Logout"
           >
             {isSigningOut ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
-            Logout
           </button>
 
+          {/* Run Button */}
           <button
             onClick={handleRun}
             disabled={isRunning}
-            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
-            data-testid="topbar-run-button"
+            className="flex items-center gap-2 bg-[#238636] hover:bg-[#2ea043] disabled:opacity-50 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ml-2"
           >
             {isRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-            Run
+            <span className="hidden sm:inline">Run</span>
           </button>
 
-          {/* Deploy + Share intentionally hidden in Scope B */}
+          {/* Publish Button */}
+          <button className="flex items-center gap-2 bg-[#58a6ff] hover:bg-[#79b8ff] text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors">
+            <Upload className="w-4 h-4" />
+            <span className="hidden sm:inline">Publish</span>
+          </button>
         </div>
       </header>
 
-      {/* Main Content */}
-      {!isIsolated && (
-        <div
-          className="mx-4 mt-3 rounded-xl border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-100"
-          data-testid="coi-warning-banner"
-        >
-          <div className="font-semibold">WebContainers needs cross-origin isolation</div>
-          <div className="text-yellow-100/90 mt-1">
-            This page is not cross-origin isolated (<code>crossOriginIsolated</code> is false). The Run button may not work.
-            Ensure your deployment preserves these headers:
-            <div className="mt-2 text-xs font-mono bg-black/20 rounded p-2 border border-yellow-500/20">
-              Cross-Origin-Opener-Policy: same-origin<br />
-              Cross-Origin-Embedder-Policy: require-corp
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Main Content Area */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Icon Sidebar */}
+        <div className="w-12 bg-[#0d1117] border-r border-[#21262d] flex flex-col items-center py-2 flex-shrink-0">
+          <button
+            onClick={() => {
+              setSidebarTab('files');
+              setLeftSidebarOpen(true);
+            }}
+            className={`sidebar-icon ${sidebarTab === 'files' && leftSidebarOpen ? 'active' : ''}`}
+            title="Files"
+          >
+            <Files className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => {
+              setSidebarTab('search');
+              setLeftSidebarOpen(true);
+            }}
+            className={`sidebar-icon ${sidebarTab === 'search' && leftSidebarOpen ? 'active' : ''}`}
+            title="Search"
+          >
+            <Search className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => {
+              setSidebarTab('git');
+              setLeftSidebarOpen(true);
+            }}
+            className={`sidebar-icon ${sidebarTab === 'git' && leftSidebarOpen ? 'active' : ''}`}
+            title="Version Control"
+          >
+            <GitBranch className="w-5 h-5" />
+          </button>
 
-      <div className="flex-1 flex overflow-hidden" data-testid="editor-layout">
-        {/* File Tree */}
-        {showFileTree && (
-          <aside className="w-56 bg-editor-sidebar border-r border-editor-border flex flex-col" data-testid="filetree-panel">
-            <div className="p-3 border-b border-editor-border flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Explorer</span>
-              <button
-                onClick={() => {
-                  const name = prompt('Enter filename (e.g., app.js):');
-                  if (name) handleCreateFile(name);
-                }}
-                className="p-1 hover:bg-white/10 rounded transition-colors"
-                title="New File"
-                data-testid="filetree-new-file-button"
-              >
-                <Plus className="w-4 h-4 text-gray-400" />
-              </button>
-            </div>
-            <FileTree
-              files={files}
-              activeFile={activeFile}
-              onSelectFile={setActiveFile}
-              onDeleteFile={handleDeleteFile}
-            />
-          </aside>
+          <div className="flex-1" />
+
+          <button
+            onClick={() => setLeftSidebarOpen(!leftSidebarOpen)}
+            className="sidebar-icon"
+            title={leftSidebarOpen ? 'Hide Sidebar' : 'Show Sidebar'}
+          >
+            <PanelLeftClose className={`w-5 h-5 transition-transform ${!leftSidebarOpen ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+
+        {/* Left Secondary Sidebar (File Tree) */}
+        {leftSidebarOpen && (
+          <div className="w-60 bg-[#161b22] border-r border-[#30363d] flex flex-col flex-shrink-0 animate-slide-right">
+            {sidebarTab === 'files' && (
+              <>
+                <div className="h-10 px-3 flex items-center justify-between border-b border-[#21262d]">
+                  <span className="text-xs font-semibold text-[#8b949e] uppercase tracking-wider">Files</span>
+                  <button
+                    onClick={() => {
+                      const name = prompt('Enter filename (e.g., app.js):');
+                      if (name) handleCreateFile(name);
+                    }}
+                    className="p-1 hover:bg-[#21262d] rounded transition-colors"
+                    title="New File"
+                  >
+                    <Plus className="w-4 h-4 text-[#8b949e]" />
+                  </button>
+                </div>
+                <FileTree
+                  files={files}
+                  activeFile={activeFile}
+                  onSelectFile={handleSelectFile}
+                  onDeleteFile={handleDeleteFile}
+                />
+              </>
+            )}
+            {sidebarTab === 'search' && (
+              <div className="p-3">
+                <input
+                  type="text"
+                  placeholder="Search files..."
+                  className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#6e7681] focus:outline-none focus:border-[#58a6ff]"
+                />
+                <p className="text-xs text-[#6e7681] mt-3 text-center">
+                  Search functionality coming soon
+                </p>
+              </div>
+            )}
+            {sidebarTab === 'git' && (
+              <div className="p-3">
+                <p className="text-xs text-[#6e7681] text-center">
+                  Version control coming soon
+                </p>
+              </div>
+            )}
+          </div>
         )}
 
-        {/* Editor + Preview + Terminal */}
-        <div className="flex-1 flex flex-col overflow-hidden" data-testid="editor-main">
+        {/* Main Editor + Preview Area */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Editor and Preview Row */}
           <div className="flex-1 flex overflow-hidden">
-            {/* Code editor */}
-            <div className={`flex-1 flex flex-col overflow-hidden ${showPreview ? 'border-r border-editor-border' : ''}`}>
-              <div className="h-9 bg-editor-sidebar border-b border-editor-border flex items-center px-2 gap-1 overflow-x-auto" data-testid="editor-tabs">
-                {Object.keys(files).map((filename) => (
+            {/* Code Editor Panel */}
+            <div className={`flex-1 flex flex-col overflow-hidden min-w-0 ${rightPanelOpen ? 'border-r border-[#30363d]' : ''}`}>
+              {/* Editor Tabs */}
+              <div className="h-9 bg-[#161b22] border-b border-[#21262d] flex items-center overflow-x-auto flex-shrink-0">
+                {openFiles.map((filename) => (
                   <div
                     key={filename}
                     onClick={() => setActiveFile(filename)}
-                    className={`flex items-center gap-2 px-3 py-1 rounded-t text-sm cursor-pointer transition-colors ${
+                    className={`group flex items-center gap-2 px-3 h-full border-r border-[#21262d] cursor-pointer transition-colors min-w-0 ${
                       activeFile === filename
-                        ? 'bg-editor-bg text-white'
-                        : 'text-gray-400 hover:text-white hover:bg-white/5'
+                        ? 'bg-[#0d1117] text-white'
+                        : 'text-[#8b949e] hover:text-white hover:bg-[#21262d]'
                     }`}
-                    data-testid={`editor-tab-${filename}`}
                   >
-                    <FileCode className="w-3.5 h-3.5" />
-                    {filename}
+                    <FileCode className={`w-3.5 h-3.5 flex-shrink-0 ${getFileIcon(filename)}`} />
+                    <span className="text-xs truncate">{filename}</span>
+                    {openFiles.length > 1 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCloseTab(filename);
+                        }}
+                        className="opacity-0 group-hover:opacity-100 hover:bg-[#30363d] rounded p-0.5 transition-opacity"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
 
-              <div className="flex-1 overflow-hidden" data-testid="code-editor-container">
+              {/* Code Editor */}
+              <div className="flex-1 overflow-hidden bg-[#0d1117]">
                 <CodeEditor code={files[activeFile] ?? ''} onChange={handleCodeChange} filename={activeFile} />
               </div>
             </div>
 
-            {/* Preview */}
-            {showPreview && (
-              <div className="w-1/2 flex flex-col overflow-hidden" data-testid="preview-panel">
-                <div className="h-9 bg-editor-sidebar border-b border-editor-border flex items-center px-4">
-                  <Eye className="w-4 h-4 text-gray-400 mr-2" />
-                  <span className="text-sm text-gray-400">Preview</span>
+            {/* Right Panel (Preview/AI) */}
+            {rightPanelOpen && (
+              <div className="w-[45%] min-w-[300px] flex flex-col overflow-hidden">
+                {/* Right Panel Tabs */}
+                <div className="h-9 bg-[#161b22] border-b border-[#21262d] flex items-center px-2 flex-shrink-0">
+                  <button
+                    onClick={() => setRightPanelTab('preview')}
+                    className={`panel-tab ${rightPanelTab === 'preview' ? 'active' : ''}`}
+                  >
+                    <Globe className="w-3.5 h-3.5 inline mr-1.5" />
+                    Webview
+                  </button>
+                  <button
+                    onClick={() => setRightPanelTab('ai')}
+                    className={`panel-tab ${rightPanelTab === 'ai' ? 'active' : ''}`}
+                  >
+                    <Sparkles className="w-3.5 h-3.5 inline mr-1.5" />
+                    AI
+                  </button>
+                  <div className="flex-1" />
+                  <button
+                    onClick={() => setRightPanelOpen(false)}
+                    className="icon-btn p-1"
+                    title="Close Panel"
+                  >
+                    <PanelRightClose className="w-4 h-4" />
+                  </button>
                 </div>
-                <div className="flex-1 bg-white">
-                  <Preview files={files} />
+
+                {/* Right Panel Content */}
+                <div className="flex-1 overflow-hidden">
+                  {rightPanelTab === 'preview' && (
+                    <div className="h-full bg-white">
+                      <Preview files={files} />
+                    </div>
+                  )}
+                  {rightPanelTab === 'ai' && (
+                    <div className="h-full bg-[#0d1117]">
+                      <AIChat
+                        onCodeGenerated={handleAICodeGenerated}
+                        onReplaceAllFiles={handleReplaceAllFiles}
+                        currentFiles={files}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             )}
           </div>
 
-          {showTerminal && (
-            <div className="h-48 border-t border-editor-border flex flex-col" data-testid="terminal-panel">
-              <div className="h-9 bg-editor-sidebar border-b border-editor-border flex items-center justify-between px-4">
-                <div className="flex items-center">
-                  <TerminalIcon className="w-4 h-4 text-gray-400 mr-2" />
-                  <span className="text-sm text-gray-400">Terminal</span>
-                </div>
-                <span className="text-xs text-gray-500" data-testid="terminal-hint">Ctrl+S to save</span>
+          {/* Bottom Panel (Console/Terminal) */}
+          {bottomPanelOpen && (
+            <div className="h-48 border-t border-[#30363d] flex flex-col flex-shrink-0">
+              {/* Bottom Panel Tabs */}
+              <div className="h-9 bg-[#161b22] border-b border-[#21262d] flex items-center px-2 flex-shrink-0">
+                <button
+                  onClick={() => setBottomPanelTab('console')}
+                  className={`panel-tab ${bottomPanelTab === 'console' ? 'active' : ''}`}
+                >
+                  <Code2 className="w-3.5 h-3.5 inline mr-1.5" />
+                  Console
+                </button>
+                <button
+                  onClick={() => setBottomPanelTab('terminal')}
+                  className={`panel-tab ${bottomPanelTab === 'terminal' ? 'active' : ''}`}
+                >
+                  <TerminalIcon className="w-3.5 h-3.5 inline mr-1.5" />
+                  Shell
+                </button>
+                <div className="flex-1" />
+                <button
+                  onClick={() => setTerminalOutput(['> FinalCode Terminal Ready', ''])}
+                  className="icon-btn p-1"
+                  title="Clear Console"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => setBottomPanelOpen(false)}
+                  className="icon-btn p-1"
+                  title="Close Panel"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
               </div>
-              <Terminal output={terminalOutput} />
+
+              {/* Terminal Content */}
+              <div className="flex-1 overflow-hidden bg-[#0d1117]">
+                <Terminal output={terminalOutput} />
+              </div>
             </div>
           )}
         </div>
 
-        {/* AI Chat */}
-        {showAIChat && (
-          <aside className="w-96 bg-editor-sidebar border-l border-editor-border flex flex-col" data-testid="ai-chat-panel">
-            <div className="p-3 border-b border-editor-border flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-purple-400" />
-              <span className="font-semibold text-white">AI Assistant</span>
-            </div>
-            <AIChat onCodeGenerated={handleAICodeGenerated} onReplaceAllFiles={handleReplaceAllFiles} currentFiles={files} />
-          </aside>
+        {/* Toggle Buttons for Panels */}
+        {!rightPanelOpen && (
+          <button
+            onClick={() => setRightPanelOpen(true)}
+            className="absolute right-4 top-16 z-10 p-2 bg-[#21262d] hover:bg-[#30363d] rounded-lg transition-colors"
+            title="Show Panel"
+          >
+            <PanelRightClose className="w-4 h-4 text-[#8b949e] rotate-180" />
+          </button>
+        )}
+
+        {!bottomPanelOpen && (
+          <button
+            onClick={() => setBottomPanelOpen(true)}
+            className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-10 flex items-center gap-2 px-3 py-1.5 bg-[#21262d] hover:bg-[#30363d] rounded-lg transition-colors text-sm text-[#8b949e] hover:text-white"
+          >
+            <TerminalIcon className="w-4 h-4" />
+            Console
+          </button>
         )}
       </div>
+
+      {/* COI Warning Banner */}
+      {!isIsolated && (
+        <div className="absolute bottom-4 left-4 max-w-md bg-[#21262d] border border-[#f0883e]/50 rounded-xl p-4 text-sm animate-slide-up">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg bg-[#f0883e]/20 flex items-center justify-center flex-shrink-0">
+              <Zap className="w-4 h-4 text-[#f0883e]" />
+            </div>
+            <div>
+              <div className="font-semibold text-[#f0883e]">WebContainers unavailable</div>
+              <div className="text-[#8b949e] text-xs mt-1">
+                Cross-origin isolation is disabled. The Run button won't work, but Preview is available.
+              </div>
+            </div>
+            <button className="text-[#8b949e] hover:text-white p-1">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
