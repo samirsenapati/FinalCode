@@ -17,7 +17,7 @@ interface AIChatProps {
   currentFiles: Record<string, string>;
 }
 
-import { loadAISettings } from '@/lib/ai/settings';
+import { loadAISettings, getActiveApiKey, AVAILABLE_MODELS } from '@/lib/ai/settings';
 
 // Example prompts for inspiration
 const EXAMPLE_PROMPTS = [
@@ -33,7 +33,7 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
     {
       id: '1',
       role: 'assistant',
-      content: "Hi! I'm your AI coding assistant.\n\nTell me what you want to build, and I'll create the code for you. Try something like:\n\n- \"Create a beautiful todo app\"\n- \"Build a calculator with a modern design\"\n- \"Make a landing page for my startup\"\n\nI can write HTML, CSS, and JavaScript to bring your ideas to life!",
+      content: "Hi! I'm **FinalCode AI**, powered by cutting-edge models like **Claude Opus 4.5** and **GPT-5.2**.\n\nTell me what you want to build, and I'll create the code for you. Try something like:\n\n- \"Create a beautiful todo app with animations\"\n- \"Build a calculator with a modern glassmorphism design\"\n- \"Make a landing page for my startup\"\n- \"Create a weather dashboard with API integration\"\n\nI can write HTML, CSS, and JavaScript to bring your ideas to life! Configure your preferred AI model in **AI Settings**.",
       timestamp: new Date(),
     }
   ]);
@@ -187,20 +187,46 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
     try {
       return loadAISettings();
     } catch {
-      return { mode: 'managed', provider: 'openai', apiKey: '', model: 'gpt-4.1-mini' } as any;
+      return { mode: 'managed', provider: 'anthropic', apiKey: '', model: 'claude-opus-4-5-20251101', openaiApiKey: '', anthropicApiKey: '' } as any;
     }
   })();
 
-  const hasKey = Boolean(settingsSnapshot.apiKey && settingsSnapshot.apiKey.trim().length > 0);
+  const hasKey = Boolean(getActiveApiKey(settingsSnapshot)?.trim());
+
+  // Get model label for display
+  const getModelLabel = (provider: string, model: string) => {
+    const models = AVAILABLE_MODELS[provider as keyof typeof AVAILABLE_MODELS] || [];
+    const found = models.find(m => m.value === model);
+    return found?.label || model;
+  };
 
   return (
     <div className="flex flex-col h-full" data-testid="ai-chat">
       {/* AI mode notice */}
       <div className="px-4 pt-3" data-testid="ai-chat-mode-notice">
-        <div className="rounded-lg border border-editor-border bg-editor-bg px-3 py-2 text-xs text-gray-400">
-          <span className="font-semibold text-gray-200">AI Mode:</span> {settingsSnapshot.mode === 'managed' ? 'Managed (server keys)' : 'BYOK (local key)'}
+        <div className="rounded-lg border border-editor-border bg-editor-bg px-3 py-2.5 text-xs text-gray-400 space-y-1">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full ${settingsSnapshot.provider === 'anthropic' ? 'bg-orange-400' : 'bg-green-400'}`}></span>
+              <span className="font-semibold text-gray-200">
+                {getModelLabel(settingsSnapshot.provider, settingsSnapshot.model)}
+              </span>
+            </div>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
+              settingsSnapshot.mode === 'managed'
+                ? 'bg-purple-500/20 text-purple-300'
+                : 'bg-blue-500/20 text-blue-300'
+            }`}>
+              {settingsSnapshot.mode === 'managed' ? 'Managed' : 'BYOK'}
+            </span>
+          </div>
           {settingsSnapshot.mode === 'byok' && !hasKey && (
-            <span className="ml-2 text-yellow-300">No BYOK key set — open AI Settings in the top bar.</span>
+            <div className="text-yellow-300 flex items-center gap-1">
+              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              No {settingsSnapshot.provider === 'anthropic' ? 'Anthropic' : 'OpenAI'} API key set — open AI Settings
+            </div>
           )}
         </div>
       </div>

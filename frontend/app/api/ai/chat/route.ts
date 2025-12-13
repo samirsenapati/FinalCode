@@ -13,15 +13,39 @@ type Body = {
   model?: string;
 };
 
-const DEFAULT_OPENAI_MODEL = 'gpt-4.1-mini';
-const DEFAULT_ANTHROPIC_MODEL = 'claude-4-sonnet-20250514';
+// Default models - using latest and most capable
+const DEFAULT_OPENAI_MODEL = 'gpt-5.2';
+const DEFAULT_ANTHROPIC_MODEL = 'claude-opus-4-5-20251101';
 
-const SYSTEM_PROMPT = `You are FinalCode AI, an expert web developer assistant that helps users build applications through natural language.
+// Model-specific configurations for optimal performance
+const MODEL_CONFIGS: Record<string, { maxTokens: number; temperature?: number }> = {
+  // OpenAI models
+  'gpt-5.2': { maxTokens: 16384, temperature: 0.2 },
+  'gpt-4.1': { maxTokens: 8192, temperature: 0.2 },
+  'gpt-4.1-mini': { maxTokens: 4096, temperature: 0.2 },
+  'gpt-4o': { maxTokens: 8192, temperature: 0.2 },
+  // Anthropic models
+  'claude-opus-4-5-20251101': { maxTokens: 16384, temperature: 0.2 },
+  'claude-sonnet-4-20250514': { maxTokens: 8192, temperature: 0.2 },
+  'claude-3-5-sonnet-latest': { maxTokens: 8192, temperature: 0.2 },
+  'claude-3-5-haiku-latest': { maxTokens: 4096, temperature: 0.2 },
+};
+
+function getModelConfig(model: string): { maxTokens: number; temperature: number } {
+  const config = MODEL_CONFIGS[model];
+  return {
+    maxTokens: config?.maxTokens ?? 4096,
+    temperature: config?.temperature ?? 0.2,
+  };
+}
+
+const SYSTEM_PROMPT = `You are FinalCode AI, an expert web developer assistant that helps users build applications through natural language. You are powered by state-of-the-art AI models including Claude Opus 4.5 and GPT-5.2.
 
 Your role:
 1. Generate clean, working code based on user descriptions
 2. Explain what you're creating in a friendly way
 3. Always provide complete, runnable code
+4. Be creative and suggest improvements when appropriate
 
 Guidelines:
 - Generate HTML, CSS, and JavaScript code that works together
@@ -30,12 +54,14 @@ Guidelines:
 - Make the code responsive and accessible
 - Use vanilla JavaScript (no frameworks) unless specifically asked
 - Always use semantic HTML
+- Use modern CSS features like Grid, Flexbox, and CSS Variables
 
 When generating code:
 - For complete apps, provide separate code blocks for HTML, CSS, and JavaScript
 - Label each code block clearly with the language (html, css, javascript)
 - Make sure the code is complete and can run immediately
 - Include any necessary error handling
+- Add smooth animations and transitions for better UX
 
 Keep responses concise but complete. Focus on delivering working code quickly.`;
 
@@ -63,6 +89,7 @@ export async function POST(request: NextRequest) {
 
     const provider: Provider = body.provider === 'anthropic' ? 'anthropic' : 'openai';
     const model = (body.model ?? '').trim() || (provider === 'openai' ? DEFAULT_OPENAI_MODEL : DEFAULT_ANTHROPIC_MODEL);
+    const modelConfig = getModelConfig(model);
 
     // Usage caps via Supabase DB
     const admin = createAdminClient();
@@ -77,7 +104,7 @@ export async function POST(request: NextRequest) {
 
     let aiRequestsToday = 0;
     let aiRequestsLimit = 0;
-    
+
     try {
       const { data: usageRows, error: usageErr } = await admin.rpc('get_user_usage', {
         p_user_id: user.id,
@@ -123,7 +150,8 @@ export async function POST(request: NextRequest) {
             { role: 'system', content: SYSTEM_PROMPT },
             { role: 'user', content: userPrompt },
           ],
-          temperature: 0.2,
+          temperature: modelConfig.temperature,
+          max_tokens: modelConfig.maxTokens,
         }),
       });
 
@@ -147,10 +175,10 @@ export async function POST(request: NextRequest) {
         },
         body: JSON.stringify({
           model,
-          max_tokens: 4096,
+          max_tokens: modelConfig.maxTokens,
           system: SYSTEM_PROMPT,
           messages: [{ role: 'user', content: userPrompt }],
-          temperature: 0.2,
+          temperature: modelConfig.temperature,
         }),
       });
 
@@ -170,7 +198,7 @@ export async function POST(request: NextRequest) {
     try {
       await admin
         .from('ai_request_logs')
-        .insert({ user_id: user.id, request_type: `chat:${provider}`, tokens_used: null });
+        .insert({ user_id: user.id, request_type: `chat:${provider}:${model}`, tokens_used: null });
     } catch {
       // ignore
     }
