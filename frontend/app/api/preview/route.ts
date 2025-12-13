@@ -100,6 +100,10 @@ export async function GET(request: NextRequest) {
 
     const supabase = createServerClient();
 
+    if (!supabase) {
+      return NextResponse.json({ error: 'Supabase configuration is missing' }, { status: 500 });
+    }
+
     // Get preview (public access for non-expired previews)
     const { data: preview, error } = await supabase
       .from('preview_urls')
