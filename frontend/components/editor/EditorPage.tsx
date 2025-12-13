@@ -601,6 +601,7 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
               onClick={() => setShowFileTree(!showFileTree)}
               className={`p-2 rounded hover:bg-white/10 transition-colors ${showFileTree ? 'text-blue-400' : 'text-gray-500'}`}
               title="Toggle File Tree"
+              data-testid="toggle-filetree-button"
             >
               <FolderTree className="w-4 h-4" />
             </button>
