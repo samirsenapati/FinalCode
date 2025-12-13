@@ -719,6 +719,13 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
                 <p className="text-xs text-[#8b949e] uppercase tracking-wider">AI Assistant</p>
                 <p className="text-sm text-white">Model selection & prompts</p>
               </div>
+              <button
+                onClick={() => setShowAISettings(true)}
+                className="flex items-center gap-2 px-3 py-1.5 bg-[#21262d] hover:bg-[#30363d] rounded-lg text-sm text-white transition-colors"
+              >
+                <Sparkles className="w-4 h-4" />
+                Model Settings
+              </button>
             </div>
             <div className="flex-1 overflow-hidden">
               <AIChat
