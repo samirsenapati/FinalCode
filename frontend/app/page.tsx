@@ -8,7 +8,7 @@ export default async function Home() {
   const supabase = createClient();
 
   if (!supabase) {
-    return redirect('/login?error=Supabase%20configuration%20is%20missing');
+    return redirect('/admin-setup');
   }
 
   const {
