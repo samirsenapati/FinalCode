@@ -164,6 +164,7 @@ function SubmitButton({ mode, disabled }: { mode: AuthMode; disabled?: boolean }
       type="submit"
       disabled={pending || disabled}
       className="w-full flex justify-center items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors px-4 py-2 text-white font-semibold"
+      data-testid="auth-submit-button"
     >
       {pending ? 'Please wait...' : mode === 'signin' ? 'Sign In' : 'Create Account'}
     </button>
