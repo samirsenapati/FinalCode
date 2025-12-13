@@ -673,9 +673,7 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
           </button>
 
           {/* User */}
-          {userEmail && (
-            <span className="text-xs text-[#8b949e] hidden lg:block px-2">{userEmail}</span>
-          )}
+          {userEmail && <span className="text-xs text-[#8b949e] hidden lg:block px-2">{userEmail}</span>}
 
           {/* Logout */}
           <button
@@ -802,38 +800,144 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
                   placeholder="acme/my-repo"
                   className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#6e7681] focus:outline-none focus:border-[#58a6ff]"
                 />
+                <p className="text-xs text-[#6e7681] mt-3 text-center">Search functionality coming soon</p>
               </div>
+            )}
+            {sidebarTab === 'git' && (
+              <div className="p-3 space-y-3 text-sm text-white">
+                <div>
+                  <p className="text-xs font-semibold text-[#8b949e] uppercase tracking-wider">GitHub Sync</p>
+                  <p className="text-[11px] text-[#6e7681]">Pull an existing repo or push AI changes back.</p>
+                </div>
 
-              <div className="flex gap-2">
-                <div className="flex-1 space-y-1">
-                  <label className="text-[11px] text-[#8b949e]">Branch</label>
+                <div className="space-y-1">
+                  <label className="text-[11px] text-[#8b949e]">Repository (owner/name)</label>
                   <input
-                    value={githubBranch}
-                    onChange={(e) => setGithubBranch(e.target.value)}
-                    placeholder="main"
+                    value={githubRepo}
+                    onChange={(e) => setGithubRepo(e.target.value)}
+                    placeholder="acme/my-repo"
                     className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#6e7681] focus:outline-none focus:border-[#58a6ff]"
                   />
                 </div>
-                <div className="flex-1 space-y-1">
-                  <label className="text-[11px] text-[#8b949e]">Commit Message</label>
+
+                <div className="flex gap-2">
+                  <div className="flex-1 space-y-1">
+                    <label className="text-[11px] text-[#8b949e]">Branch</label>
+                    <input
+                      value={githubBranch}
+                      onChange={(e) => setGithubBranch(e.target.value)}
+                      placeholder="main"
+                      className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#6e7681] focus:outline-none focus:border-[#58a6ff]"
+                    />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <label className="text-[11px] text-[#8b949e]">Commit Message</label>
+                    <input
+                      value={gitCommitMessage}
+                      onChange={(e) => setGitCommitMessage(e.target.value)}
+                      className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#6e7681] focus:outline-none focus:border-[#58a6ff]"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[11px] text-[#8b949e]">GitHub Token (never sent to AI)</label>
                   <input
-                    value={gitCommitMessage}
-                    onChange={(e) => setGitCommitMessage(e.target.value)}
+                    type="password"
+                    value={githubToken}
+                    onChange={(e) => setGithubToken(e.target.value)}
+                    placeholder="ghp_xxx..."
                     className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#6e7681] focus:outline-none focus:border-[#58a6ff]"
                   />
+                  <p className="text-[11px] text-[#6e7681]">Stored locally in your browser for this workspace.</p>
                 </div>
-              </div>
 
-              <div className="space-y-1">
-                <label className="text-[11px] text-[#8b949e]">GitHub Token (never sent to AI)</label>
-                <input
-                  type="password"
-                  value={githubToken}
-                  onChange={(e) => setGithubToken(e.target.value)}
-                  placeholder="ghp_xxx..."
-                  className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#6e7681] focus:outline-none focus:border-[#58a6ff]"
-                />
-                <p className="text-[11px] text-[#6e7681]">Stored locally in your browser for this workspace.</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleGithubPull}
+                    disabled={gitLoading === 'pull'}
+                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      gitLoading === 'pull'
+                        ? 'bg-[#21262d] text-[#8b949e] cursor-not-allowed'
+                        : 'bg-[#1f6feb] hover:bg-[#388bfd] text-white'
+                    }`}
+                  >
+                    {gitLoading === 'pull' ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                    Pull
+                  </button>
+                  <button
+                    onClick={handleGithubPush}
+                    disabled={gitLoading === 'push'}
+                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      gitLoading === 'push'
+                        ? 'bg-[#21262d] text-[#8b949e] cursor-not-allowed'
+                        : 'bg-[#238636] hover:bg-[#2ea043] text-white'
+                    }`}
+                  >
+                    {gitLoading === 'push' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                    Push
+                  </button>
+                </div>
+
+                {gitStatus && <p className="text-[11px] text-[#9ca3af]">{gitStatus}</p>}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Main workspace aligned to left editor/AI and right preview/output */}
+        <div className="flex-1 flex overflow-hidden gap-3 p-3">
+          <div className="flex-[0.55] flex flex-col bg-[#0d1117] border border-[#30363d] rounded-xl overflow-hidden">
+            <div className="h-9 bg-[#161b22] border-b border-[#21262d] flex items-center overflow-x-auto flex-shrink-0">
+              {openFiles.map((filename) => (
+                <div
+                  key={filename}
+                  onClick={() => setActiveFile(filename)}
+                  className={`group flex items-center gap-2 px-3 h-full border-r border-[#21262d] cursor-pointer transition-colors min-w-0 ${
+                    activeFile === filename
+                      ? 'bg-[#0d1117] text-white'
+                      : 'text-[#8b949e] hover:text-white hover:bg-[#21262d]'
+                  }`}
+                >
+                  <FileCode className={`w-3.5 h-3.5 flex-shrink-0 ${getFileIcon(filename)}`} />
+                  <span className="text-xs truncate">{filename}</span>
+                  {openFiles.length > 1 && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCloseTab(filename);
+                      }}
+                      className="opacity-0 group-hover:opacity-100 hover:bg-[#30363d] rounded p-0.5 transition-opacity"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="flex-1 overflow-hidden bg-[#0d1117]">
+              <CodeEditor code={files[activeFile] ?? ''} onChange={handleCodeChange} filename={activeFile} />
+            </div>
+
+            <div className="h-72 border-t border-[#30363d] bg-[#0d1117] flex flex-col">
+              <div className="px-4 py-3 border-b border-[#21262d] bg-[#0b0f14] flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-[#1f2937] flex items-center justify-center flex-shrink-0">
+                  <Sparkles className="w-5 h-5 text-[#58a6ff]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-[#8b949e] uppercase tracking-wider">AI Agent</p>
+                  <p className="text-sm text-white truncate" title={agentStatus}>
+                    {agentStatus}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowAISettings(true)}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-[#21262d] hover:bg-[#30363d] rounded-lg text-sm text-white transition-colors"
+                >
+                  <Settings className="w-4 h-4" />
+                  Model Settings
+                </button>
               </div>
               <button
                 onClick={() => setShowAISettings(true)}
@@ -844,31 +948,33 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
               </button>
             </div>
 
-              <div className="flex gap-2">
-                <button
-                  onClick={handleGithubPull}
-                  disabled={gitLoading === 'pull'}
-                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    gitLoading === 'pull'
-                      ? 'bg-[#21262d] text-[#8b949e] cursor-not-allowed'
-                      : 'bg-[#1f6feb] hover:bg-[#388bfd] text-white'
-                  }`}
-                >
-                  {gitLoading === 'pull' ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                  Pull
-                </button>
-                <button
-                  onClick={handleGithubPush}
-                  disabled={gitLoading === 'push'}
-                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    gitLoading === 'push'
-                      ? 'bg-[#21262d] text-[#8b949e] cursor-not-allowed'
-                      : 'bg-[#238636] hover:bg-[#2ea043] text-white'
-                  }`}
-                >
-                  {gitLoading === 'push' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                  Push
-                </button>
+              <div className="h-12 px-4 flex items-center border-b border-[#21262d]">
+                <div>
+                  <p className="text-xs text-[#8b949e] uppercase tracking-wider">AI Assistant</p>
+                  <p className="text-sm text-white">Model selection & prompts</p>
+                </div>
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <AIChat
+                  onCodeGenerated={handleAICodeGenerated}
+                  onReplaceAllFiles={handleReplaceAllFiles}
+                  currentFiles={files}
+                  onStatusChange={setAgentStatus}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex-[0.45] flex flex-col gap-3 overflow-hidden">
+            <div className="flex-1 bg-white border border-[#30363d] rounded-xl overflow-hidden flex flex-col">
+              <div className="h-12 px-4 flex items-center justify-between border-b border-[#30363d] bg-[#0d1117]">
+                <div className="flex items-center gap-2 text-white text-sm font-medium">
+                  <Eye className="w-4 h-4 text-[#58a6ff]" />
+                  Live Preview
+                </div>
+              </div>
+              <div className="flex-1">
+                <Preview files={files} />
               </div>
 
               {gitStatus && <p className="text-[11px] text-[#9ca3af]">{gitStatus}</p>}
@@ -877,51 +983,46 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
         </div>
       )}
 
-      {/* Main workspace aligned to left editor/AI and right preview/output */}
-      <div className="flex-1 flex overflow-hidden gap-3 p-3">
-        <div className="flex-[0.55] flex flex-col bg-[#0d1117] border border-[#30363d] rounded-xl overflow-hidden">
-          <div className="h-9 bg-[#161b22] border-b border-[#21262d] flex items-center overflow-x-auto flex-shrink-0">
-            {openFiles.map((filename) => (
-              <div
-                key={filename}
-                onClick={() => setActiveFile(filename)}
-                className={`group flex items-center gap-2 px-3 h-full border-r border-[#21262d] cursor-pointer transition-colors min-w-0 ${
-                  activeFile === filename
-                    ? 'bg-[#0d1117] text-white'
-                    : 'text-[#8b949e] hover:text-white hover:bg-[#21262d]'
-                }`}
-              >
-                <FileCode className={`w-3.5 h-3.5 flex-shrink-0 ${getFileIcon(filename)}`} />
-                <span className="text-xs truncate">{filename}</span>
-                {openFiles.length > 1 && (
+            {bottomPanelOpen && (
+              <div className="h-64 bg-[#0d1117] border border-[#30363d] rounded-xl flex flex-col overflow-hidden">
+                <div className="h-10 bg-[#161b22] border-b border-[#21262d] flex items-center px-3 flex-shrink-0 rounded-t-xl">
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleCloseTab(filename);
-                    }}
-                    className="opacity-0 group-hover:opacity-100 hover:bg-[#30363d] rounded p-0.5 transition-opacity"
+                    onClick={() => setBottomPanelTab('console')}
+                    className={`panel-tab ${bottomPanelTab === 'console' ? 'active' : ''}`}
                   >
-                    <X className="w-3 h-3" />
+                    <Code2 className="w-3.5 h-3.5 inline mr-1.5" />
+                    Console
+                  </button>
+                  <button
+                    onClick={() => setBottomPanelTab('terminal')}
+                    className={`panel-tab ${bottomPanelTab === 'terminal' ? 'active' : ''}`}
+                  >
+                    <TerminalIcon className="w-3.5 h-3.5 inline mr-1.5" />
+                    Shell
+                  </button>
+                  <div className="flex-1" />
+                  <button
+                    onClick={() => setTerminalOutput(['> FinalCode Terminal Ready', ''])}
+                    className="icon-btn p-1"
+                    title="Clear Console"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setBottomPanelOpen(false)}
+                    className="icon-btn p-1"
+                    title="Hide Output"
+                  >
+                    <X className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>
             ))}
           </div>
 
-          <div className="flex-1 overflow-hidden bg-[#0d1117]">
-            <CodeEditor code={files[activeFile] ?? ''} onChange={handleCodeChange} filename={activeFile} />
-          </div>
-
-          <div className="h-72 border-t border-[#30363d] bg-[#0d1117] flex flex-col">
-            <div className="px-4 py-3 border-b border-[#21262d] bg-[#0b0f14] flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-[#1f2937] flex items-center justify-center flex-shrink-0">
-                <Sparkles className="w-5 h-5 text-[#58a6ff]" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs text-[#8b949e] uppercase tracking-wider">AI Agent</p>
-                <p className="text-sm text-white truncate" title={agentStatus}>
-                  {agentStatus}
-                </p>
+                <div className="flex-1 overflow-hidden">
+                  <Terminal output={terminalOutput} />
+                </div>
               </div>
               <button
                 onClick={() => setShowAISettings(true)}
@@ -961,46 +1062,6 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
               <Preview files={files} />
             </div>
           </div>
-
-          {bottomPanelOpen && (
-            <div className="h-64 bg-[#0d1117] border border-[#30363d] rounded-xl flex flex-col overflow-hidden">
-              <div className="h-10 bg-[#161b22] border-b border-[#21262d] flex items-center px-3 flex-shrink-0 rounded-t-xl">
-                <button
-                  onClick={() => setBottomPanelTab('console')}
-                  className={`panel-tab ${bottomPanelTab === 'console' ? 'active' : ''}`}
-                >
-                  <Code2 className="w-3.5 h-3.5 inline mr-1.5" />
-                  Console
-                </button>
-                <button
-                  onClick={() => setBottomPanelTab('terminal')}
-                  className={`panel-tab ${bottomPanelTab === 'terminal' ? 'active' : ''}`}
-                >
-                  <TerminalIcon className="w-3.5 h-3.5 inline mr-1.5" />
-                  Shell
-                </button>
-                <div className="flex-1" />
-                <button
-                  onClick={() => setTerminalOutput(['> FinalCode Terminal Ready', ''])}
-                  className="icon-btn p-1"
-                  title="Clear Console"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => setBottomPanelOpen(false)}
-                  className="icon-btn p-1"
-                  title="Hide Output"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-hidden">
-                <Terminal output={terminalOutput} />
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
