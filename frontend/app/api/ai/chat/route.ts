@@ -158,10 +158,13 @@ export async function POST(request: NextRequest) {
     if (!responseText) return jsonError('Empty AI response', 500);
 
     // Track usage
-    await admin
-      .from('ai_request_logs')
-      .insert({ user_id: user.id, request_type: `chat:${provider}`, tokens_used: null })
-      .catch(() => null);
+    try {
+      await admin
+        .from('ai_request_logs')
+        .insert({ user_id: user.id, request_type: `chat:${provider}`, tokens_used: null });
+    } catch {
+      // ignore
+    }
 
     // Increment usage counter
     // usage_tracking has one row per day per user (initialized by trigger). Update the current active period row.
