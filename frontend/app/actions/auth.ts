@@ -28,7 +28,7 @@ export async function signInWithEmailPassword(
 ): Promise<AuthState> {
   const supabase = createClient();
   if (!supabase) {
-    return { error: missingConfigError };
+    redirect('/admin-setup');
   }
 
   const email = String(formData.get('email') ?? '');
@@ -48,7 +48,7 @@ export async function signUpWithEmailPassword(
 ): Promise<AuthState> {
   const supabase = createClient();
   if (!supabase) {
-    return { error: missingConfigError };
+    redirect('/admin-setup');
   }
 
   const email = String(formData.get('email') ?? '');
@@ -81,7 +81,7 @@ export async function signInWithGithub(
 ): Promise<AuthState> {
   const supabase = createClient();
   if (!supabase) {
-    return { error: missingConfigError };
+    redirect('/admin-setup');
   }
 
   const { data, error } = await supabase.auth.signInWithOAuth({
