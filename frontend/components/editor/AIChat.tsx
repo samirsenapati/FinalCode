@@ -293,11 +293,13 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
             className="flex-1 bg-gray-800 text-white rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 placeholder-gray-500"
             rows={2}
             disabled={isLoading}
+            data-testid="ai-chat-input"
           />
           <button
             onClick={sendMessage}
             disabled={!input.trim() || isLoading}
             className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white p-3 rounded-xl transition-colors self-end"
+            data-testid="ai-chat-send-button"
           >
             {isLoading ? (
               <Loader2 className="w-5 h-5 animate-spin" />
