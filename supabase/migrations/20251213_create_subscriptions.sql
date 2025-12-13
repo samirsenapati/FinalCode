@@ -109,8 +109,8 @@ CREATE POLICY "Users can view their own legacy projects"
   FOR SELECT
   USING (auth.uid() = user_id);
 
-CREATE POLICY "Users can view public projects"
-  ON public.projects
+CREATE POLICY "Users can view public legacy projects"
+  ON public.projects_legacy
   FOR SELECT
   USING (is_public = true);
 
