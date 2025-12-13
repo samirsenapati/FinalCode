@@ -35,8 +35,12 @@ CREATE TABLE IF NOT EXISTS public.ai_request_logs (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Create projects table to track user projects
-CREATE TABLE IF NOT EXISTS public.projects (
+-- Create legacy projects table (older schema, kept for backward compatibility)
+-- NOTE: FinalCode production uses a normalized schema created in 20251214_projects_normalized.sql:
+--   - public.projects
+--   - public.project_files
+-- This legacy table is renamed to avoid conflicts.
+CREATE TABLE IF NOT EXISTS public.projects_legacy (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
