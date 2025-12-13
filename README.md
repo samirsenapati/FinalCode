@@ -91,8 +91,9 @@ WebContainers require **cross-origin isolation**:
 - `Cross-Origin-Opener-Policy: same-origin`
 - `Cross-Origin-Embedder-Policy: require-corp`
 
-This repo already sets these headers in `frontend/next.config.js`.
-Some preview/proxy environments may strip headers; if WebContainers fails, test on a direct localhost/HTTPS origin that preserves headers.
+This repo sets these headers in `frontend/next.config.js`.
+If you run behind an additional proxy/CDN, ensure it does not strip them.
+The UI also shows a banner when cross-origin isolation is not enabled.
 
 ### GitHub Codespaces
 
