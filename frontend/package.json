@@ -4,7 +4,7 @@
   "description": "AI-powered vibe coding platform - Build apps by describing what you want",
   "private": true,
   "scripts": {
-    "dev": "next dev -H 0.0.0.0 -p 3000",
+    "dev": "next dev -H 0.0.0.0 -p 5000",
     "build": "next build",
     "start": "node scripts/start.js",
     "lint": "next lint"
