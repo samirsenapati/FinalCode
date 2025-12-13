@@ -2,8 +2,11 @@
 
 import { useCallback, useEffect, useState, useTransition } from 'react';
 import {
+  ArrowDownUp,
   ChevronDown,
   Code2,
+  Download,
+  ExternalLink,
   Eye,
   FileCode,
   Files,
@@ -132,6 +135,7 @@ console.log('FinalCode app loaded');`,
 
 type SidebarTab = 'files' | 'search' | 'git';
 type BottomPanelTab = 'console' | 'terminal';
+type RightPanelTab = 'preview' | 'console' | 'git';
 
 export default function EditorPage({ userEmail }: EditorPageProps) {
   const [isSigningOut, startSignOut] = useTransition();
@@ -174,13 +178,18 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
   const [openFiles, setOpenFiles] = useState<string[]>(['index.html']);
   const [agentStatus, setAgentStatus] = useState('Idle — ready for your next request');
 
+  // Right panel tabs
+  const [rightPanelTab, setRightPanelTab] = useState<RightPanelTab>('preview');
+
   // GitHub integration
   const [githubRepo, setGithubRepo] = useState('');
   const [githubBranch, setGithubBranch] = useState('main');
   const [githubToken, setGithubToken] = useState('');
   const [gitCommitMessage, setGitCommitMessage] = useState('Update via FinalCode AI');
   const [gitStatus, setGitStatus] = useState<string | null>(null);
-  const [gitLoading, setGitLoading] = useState<'pull' | 'push' | null>(null);
+  const [gitLoading, setGitLoading] = useState<'pull' | 'push' | 'fetch' | null>(null);
+  const [lastFetchedTime, setLastFetchedTime] = useState<Date | null>(null);
+  const [commitsToPush, setCommitsToPush] = useState(0);
 
   // Persist GitHub connection details locally for convenience
   useEffect(() => {
@@ -580,6 +589,59 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
     }
   }, [files, gitCommitMessage, githubBranch, githubRepo, githubToken]);
 
+  const handleGithubFetch = useCallback(async () => {
+    if (!githubRepo.trim() || !githubToken.trim()) {
+      setGitStatus('Add a repository and token to fetch.');
+      return;
+    }
+
+    setGitLoading('fetch');
+    const repo = githubRepo.trim();
+    const branch = githubBranch.trim() || 'main';
+
+    setGitStatus(`Fetching ${repo} (${branch})...`);
+    setTerminalOutput((prev) => [...prev, `> Fetching ${repo} (${branch})...`, '']);
+
+    try {
+      const res = await fetch('/api/github/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'fetch',
+          repo,
+          branch,
+          token: githubToken.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error || 'Failed to fetch from GitHub.');
+      }
+
+      setLastFetchedTime(new Date());
+      setCommitsToPush(data?.commitsBehind ?? 0);
+      setGitStatus(`Fetched ${repo} (${branch}) successfully.`);
+      setTerminalOutput((prev) => [...prev, `> Fetched ${repo} (${branch})`, '']);
+    } catch (error: any) {
+      const msg = error?.message || 'GitHub fetch failed.';
+      setGitStatus(msg);
+      setTerminalOutput((prev) => [...prev, `> GitHub fetch failed: ${msg}`, '']);
+    } finally {
+      setGitLoading(null);
+    }
+  }, [githubBranch, githubRepo, githubToken]);
+
+  const formatLastFetched = useCallback(() => {
+    if (!lastFetchedTime) return 'never';
+    const now = new Date();
+    const diff = Math.floor((now.getTime() - lastFetchedTime.getTime()) / 1000);
+    if (diff < 60) return 'just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)} hours ago`;
+    return lastFetchedTime.toLocaleDateString();
+  }, [lastFetchedTime]);
+
   // File icon helper
   const getFileIcon = (filename: string) => {
     const ext = filename.split('.').pop()?.toLowerCase();
@@ -745,76 +807,273 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
           </div>
         </div>
 
-        {/* Right Panel - Preview */}
+        {/* Right Panel - Tabbed (Preview, Console, Git) */}
         <div className="flex-1 flex flex-col bg-[#161b22]">
-          {/* Preview Header */}
-          <div className="h-12 px-4 flex items-center justify-between border-b border-[#21262d] bg-[#0d1117]">
-            <div className="flex items-center gap-2 text-white text-sm font-medium">
-              <Eye className="w-4 h-4 text-[#58a6ff]" />
+          {/* Tab Bar - Replit Style */}
+          <div className="h-10 bg-[#0d1117] border-b border-[#21262d] flex items-center px-2">
+            <div
+              onClick={() => setRightPanelTab('preview')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded transition-colors cursor-pointer ${
+                rightPanelTab === 'preview'
+                  ? 'bg-[#21262d] text-white'
+                  : 'text-[#8b949e] hover:text-white hover:bg-[#161b22]'
+              }`}
+            >
+              <Eye className="w-3.5 h-3.5" />
               Preview
+              <span className="ml-1 p-0.5 hover:bg-[#30363d] rounded opacity-60 hover:opacity-100">
+                <X className="w-3 h-3" />
+              </span>
             </div>
+            <div
+              onClick={() => setRightPanelTab('console')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded transition-colors cursor-pointer ${
+                rightPanelTab === 'console'
+                  ? 'bg-[#21262d] text-white'
+                  : 'text-[#8b949e] hover:text-white hover:bg-[#161b22]'
+              }`}
+            >
+              <TerminalIcon className="w-3.5 h-3.5" />
+              Console
+              <span className="ml-1 p-0.5 hover:bg-[#30363d] rounded opacity-60 hover:opacity-100">
+                <X className="w-3 h-3" />
+              </span>
+            </div>
+            <div
+              onClick={() => setRightPanelTab('git')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded transition-colors cursor-pointer ${
+                rightPanelTab === 'git'
+                  ? 'bg-[#21262d] text-white'
+                  : 'text-[#8b949e] hover:text-white hover:bg-[#161b22]'
+              }`}
+            >
+              <GitBranch className="w-3.5 h-3.5" />
+              Git
+              <span className="ml-1 p-0.5 hover:bg-[#30363d] rounded opacity-60 hover:opacity-100">
+                <X className="w-3 h-3" />
+              </span>
+            </div>
+            <div className="flex items-center justify-center w-7 h-7 text-[#8b949e] hover:text-white hover:bg-[#161b22] rounded transition-colors ml-1 cursor-pointer">
+              <Plus className="w-4 h-4" />
+            </div>
+            <div className="flex-1" />
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setLeftSidebarOpen(!leftSidebarOpen)}
-                className="p-1.5 hover:bg-[#21262d] rounded-lg transition-colors"
+                className="p-1.5 hover:bg-[#21262d] rounded transition-colors"
                 title="Toggle Files"
               >
                 <Files className="w-4 h-4 text-[#8b949e]" />
               </button>
-              <button
-                onClick={() => setBottomPanelOpen(!bottomPanelOpen)}
-                className="p-1.5 hover:bg-[#21262d] rounded-lg transition-colors"
-                title="Toggle Console"
-              >
-                <TerminalIcon className="w-4 h-4 text-[#8b949e]" />
-              </button>
             </div>
           </div>
 
-          {/* Preview Content */}
-          <div className="flex-1 bg-white overflow-hidden">
-            <Preview files={files} />
-          </div>
+          {/* Panel Content */}
+          <div className="flex-1 overflow-hidden">
+            {/* Preview Tab */}
+            {rightPanelTab === 'preview' && (
+              <div className="h-full bg-white">
+                <Preview files={files} />
+              </div>
+            )}
 
-          {/* Optional Console Panel */}
-          {bottomPanelOpen && (
-            <div className="h-48 bg-[#0d1117] border-t border-[#21262d] flex flex-col">
-              <div className="h-9 bg-[#161b22] border-b border-[#21262d] flex items-center px-3 flex-shrink-0">
-                <button
-                  onClick={() => setBottomPanelTab('console')}
-                  className={`panel-tab ${bottomPanelTab === 'console' ? 'active' : ''}`}
-                >
-                  <Code2 className="w-3.5 h-3.5 inline mr-1.5" />
-                  Console
-                </button>
-                <button
-                  onClick={() => setBottomPanelTab('terminal')}
-                  className={`panel-tab ${bottomPanelTab === 'terminal' ? 'active' : ''}`}
-                >
-                  <TerminalIcon className="w-3.5 h-3.5 inline mr-1.5" />
-                  Shell
-                </button>
-                <div className="flex-1" />
-                <button
-                  onClick={() => setTerminalOutput(['> FinalCode Terminal Ready', ''])}
-                  className="icon-btn p-1"
-                  title="Clear Console"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => setBottomPanelOpen(false)}
-                  className="icon-btn p-1"
-                  title="Hide Console"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
+            {/* Console Tab */}
+            {rightPanelTab === 'console' && (
+              <div className="h-full bg-[#0d1117] flex flex-col">
+                <div className="h-9 bg-[#161b22] border-b border-[#21262d] flex items-center px-3 flex-shrink-0">
+                  <button
+                    onClick={() => setBottomPanelTab('console')}
+                    className={`panel-tab ${bottomPanelTab === 'console' ? 'active' : ''}`}
+                  >
+                    <Code2 className="w-3.5 h-3.5 inline mr-1.5" />
+                    Output
+                  </button>
+                  <button
+                    onClick={() => setBottomPanelTab('terminal')}
+                    className={`panel-tab ${bottomPanelTab === 'terminal' ? 'active' : ''}`}
+                  >
+                    <TerminalIcon className="w-3.5 h-3.5 inline mr-1.5" />
+                    Shell
+                  </button>
+                  <div className="flex-1" />
+                  <button
+                    onClick={() => setTerminalOutput(['> FinalCode Terminal Ready', ''])}
+                    className="icon-btn p-1"
+                    title="Clear Console"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-hidden">
+                  <Terminal output={terminalOutput} />
+                </div>
               </div>
-              <div className="flex-1 overflow-hidden">
-                <Terminal output={terminalOutput} />
+            )}
+
+            {/* Git Tab - Replit Style */}
+            {rightPanelTab === 'git' && (
+              <div className="h-full bg-[#0d1117] overflow-y-auto">
+                {/* Branch Selector */}
+                <div className="px-4 py-3 border-b border-[#21262d]">
+                  <button className="flex items-center gap-2 text-sm text-[#c9d1d9] hover:text-white">
+                    <GitBranch className="w-4 h-4 text-[#8b949e]" />
+                    <span>{githubBranch || 'main'}</span>
+                    <ChevronDown className="w-3 h-3 text-[#8b949e]" />
+                  </button>
+                </div>
+
+                {/* Remote Updates Section */}
+                <div className="px-4 py-4 border-b border-[#21262d]">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-semibold text-white">Remote Updates</h3>
+                    {githubRepo && (
+                      <a
+                        href={`https://github.com/${githubRepo}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-xs text-[#58a6ff] hover:underline"
+                      >
+                        {githubRepo}
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between text-sm mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[#58a6ff]">origin/{githubBranch || 'main'}</span>
+                      <span className="text-[#8b949e]">- upstream</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-[#8b949e]">
+                        last fetched {formatLastFetched()}
+                      </span>
+                      <button
+                        onClick={handleGithubFetch}
+                        disabled={gitLoading === 'fetch' || !githubRepo || !githubToken}
+                        className="flex items-center gap-1 text-xs text-[#58a6ff] hover:text-[#79b8ff] disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {gitLoading === 'fetch' ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <RefreshCw className="w-3 h-3" />
+                        )}
+                        Fetch
+                      </button>
+                    </div>
+                  </div>
+
+                  {commitsToPush > 0 && (
+                    <p className="text-xs text-[#8b949e] mb-3">
+                      {commitsToPush} commit{commitsToPush > 1 ? 's' : ''} to push
+                    </p>
+                  )}
+
+                  {/* Sync with Remote Button */}
+                  <button
+                    onClick={async () => {
+                      await handleGithubFetch();
+                      await handleGithubPull();
+                    }}
+                    disabled={gitLoading !== null || !githubRepo || !githubToken}
+                    className="w-full py-2 px-4 bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] rounded-lg text-sm text-white flex items-center justify-center gap-2 mb-3 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ArrowDownUp className="w-4 h-4" />
+                    Sync with Remote
+                  </button>
+
+                  {/* Pull and Push Buttons */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleGithubPull}
+                      disabled={gitLoading === 'pull' || !githubRepo || !githubToken}
+                      className="flex-1 py-2 px-3 bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] rounded-lg text-sm text-white flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {gitLoading === 'pull' ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Download className="w-4 h-4" />
+                      )}
+                      Pull
+                    </button>
+                    <button
+                      onClick={handleGithubPush}
+                      disabled={gitLoading === 'push' || !githubRepo || !githubToken}
+                      className="flex-1 py-2 px-3 bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] rounded-lg text-sm text-white flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {gitLoading === 'push' ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Upload className="w-4 h-4" />
+                      )}
+                      Push
+                    </button>
+                  </div>
+                </div>
+
+                {/* Commit Section */}
+                <div className="px-4 py-4 border-b border-[#21262d]">
+                  <h3 className="text-sm font-semibold text-white mb-3">Commit</h3>
+                  <p className="text-sm text-[#8b949e]">
+                    There are no changes to commit.
+                  </p>
+                </div>
+
+                {/* Git Settings Section */}
+                <div className="px-4 py-4">
+                  <h3 className="text-sm font-semibold text-white mb-3">Git Settings</h3>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs text-[#8b949e] mb-1">Repository (owner/name)</label>
+                      <input
+                        type="text"
+                        value={githubRepo}
+                        onChange={(e) => setGithubRepo(e.target.value)}
+                        placeholder="e.g., username/repo"
+                        className="w-full px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-sm text-white placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-[#8b949e] mb-1">Branch</label>
+                      <input
+                        type="text"
+                        value={githubBranch}
+                        onChange={(e) => setGithubBranch(e.target.value)}
+                        placeholder="main"
+                        className="w-full px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-sm text-white placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-[#8b949e] mb-1">Personal Access Token</label>
+                      <input
+                        type="password"
+                        value={githubToken}
+                        onChange={(e) => setGithubToken(e.target.value)}
+                        placeholder="ghp_..."
+                        className="w-full px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-sm text-white placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-[#8b949e] mb-1">Commit Message</label>
+                      <input
+                        type="text"
+                        value={gitCommitMessage}
+                        onChange={(e) => setGitCommitMessage(e.target.value)}
+                        placeholder="Update via FinalCode AI"
+                        className="w-full px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-sm text-white placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff]"
+                      />
+                    </div>
+                  </div>
+
+                  {gitStatus && (
+                    <div className="mt-3 p-2 bg-[#161b22] rounded-lg">
+                      <p className="text-xs text-[#8b949e]">{gitStatus}</p>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Files Sidebar (slides in from right when toggled) */}
