@@ -1,0 +1,52 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background gradient -->
+  <rect width="1200" height="630" fill="url(#bgGradient)"/>
+
+  <!-- Decorative elements -->
+  <circle cx="100" cy="100" r="150" fill="url(#circleGradient1)" opacity="0.1"/>
+  <circle cx="1100" cy="530" r="200" fill="url(#circleGradient2)" opacity="0.1"/>
+
+  <!-- Main content -->
+  <text x="600" y="240" font-family="system-ui, -apple-system, sans-serif" font-size="80" font-weight="bold" fill="white" text-anchor="middle">
+    FinalCode
+  </text>
+
+  <text x="600" y="320" font-family="system-ui, -apple-system, sans-serif" font-size="36" fill="#e0e0e0" text-anchor="middle">
+    Build Apps with AI
+  </text>
+
+  <text x="600" y="400" font-family="system-ui, -apple-system, sans-serif" font-size="28" fill="#b0b0b0" text-anchor="middle">
+    The AI-powered vibe coding platform
+  </text>
+
+  <!-- Lightning bolt icon -->
+  <g transform="translate(520, 100)">
+    <path d="M40 0L20 40H35L25 80L45 40H30L40 0Z" fill="url(#iconGradient)"/>
+  </g>
+
+  <defs>
+    <!-- Background gradient -->
+    <linearGradient id="bgGradient" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1a1a2e"/>
+      <stop offset="0.5" stop-color="#16213e"/>
+      <stop offset="1" stop-color="#0f172a"/>
+    </linearGradient>
+
+    <!-- Icon gradient -->
+    <linearGradient id="iconGradient" x1="0" y1="0" x2="60" y2="80" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#667eea"/>
+      <stop offset="1" stop-color="#764ba2"/>
+    </linearGradient>
+
+    <!-- Circle gradients -->
+    <radialGradient id="circleGradient1">
+      <stop offset="0" stop-color="#667eea"/>
+      <stop offset="1" stop-color="#764ba2"/>
+    </radialGradient>
+
+    <radialGradient id="circleGradient2">
+      <stop offset="0" stop-color="#764ba2"/>
+      <stop offset="1" stop-color="#667eea"/>
+    </radialGradient>
+  </defs>
+</svg>

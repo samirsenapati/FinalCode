@@ -1,0 +1,20 @@
+{
+  "name": "FinalCode - Build Apps with AI",
+  "short_name": "FinalCode",
+  "description": "The AI-powered vibe coding platform. Describe what you want to build, and watch it come to life.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1e1e1e",
+  "theme_color": "#667eea",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["development", "productivity", "utilities"],
+  "screenshots": []
+}
