@@ -2,6 +2,7 @@
 
 import { useCallback, useState, useTransition } from 'react';
 import {
+  Copy,
   Eye,
   FileCode,
   FolderTree,
@@ -10,6 +11,7 @@ import {
   Play,
   Plus,
   Rocket,
+  Share2,
   Sparkles,
   Terminal as TerminalIcon,
   Zap,
@@ -149,6 +151,11 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
   // Loading states
   const [isRunning, setIsRunning] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
+  const [isSharingPreview, setIsSharingPreview] = useState(false);
+
+  // Deployment state
+  const [deploymentUrl, setDeploymentUrl] = useState<string>('');
+  const [previewUrl, setPreviewUrl] = useState<string>('');
 
   // Update file content
   const handleCodeChange = useCallback((newCode: string) => {
@@ -203,24 +210,119 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
     }, 500);
   }, []);
 
-  // Deploy code (simulated)
-  const handleDeploy = useCallback(() => {
-    setIsDeploying(true);
-    setTerminalOutput(prev => [...prev, '> Deploying to FinalCode Cloud...']);
+  // Deploy code to Cloudflare Pages
+  const handleDeploy = useCallback(async () => {
+    try {
+      setIsDeploying(true);
+      setTerminalOutput(prev => [...prev, '> Deploying to Cloudflare Pages...']);
 
-    setTimeout(() => {
-      const deployId = Math.random().toString(36).substring(7);
+      // Get project name from user
+      const projectName = prompt('Enter a name for your project:', 'my-app') || 'my-app';
+
+      setTerminalOutput(prev => [...prev, '> Building project...']);
+
+      const response = await fetch('/api/deploy', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          projectName,
+          files,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Deployment failed');
+      }
+
+      setDeploymentUrl(data.deploymentUrl);
       setTerminalOutput(prev => [
         ...prev,
         '✓ Build completed',
-        '✓ Deploying assets...',
+        '✓ Deploying assets to Cloudflare...',
         `✓ Deployed successfully!`,
-        `🔗 https://${deployId}.finalcode.app`,
+        `🔗 ${data.deploymentUrl}`,
+        `📦 Subdomain: ${data.subdomain}.finalcode.dev`,
         ''
       ]);
+    } catch (error: any) {
+      console.error('Deployment error:', error);
+      setTerminalOutput(prev => [
+        ...prev,
+        `✗ Deployment failed: ${error.message}`,
+        ''
+      ]);
+    } finally {
       setIsDeploying(false);
-    }, 2000);
-  }, []);
+    }
+  }, [files]);
+
+  // Share preview (create temporary preview URL)
+  const handleSharePreview = useCallback(async () => {
+    try {
+      setIsSharingPreview(true);
+      setTerminalOutput(prev => [...prev, '> Creating shareable preview...']);
+
+      const response = await fetch('/api/preview', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          files,
+          expiresInHours: 24,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create preview');
+      }
+
+      setPreviewUrl(data.previewUrl);
+
+      // Copy to clipboard
+      await navigator.clipboard.writeText(data.previewUrl);
+
+      setTerminalOutput(prev => [
+        ...prev,
+        '✓ Preview created successfully!',
+        `🔗 ${data.previewUrl}`,
+        '📋 URL copied to clipboard',
+        `⏰ Expires: ${new Date(data.expiresAt).toLocaleString()}`,
+        ''
+      ]);
+    } catch (error: any) {
+      console.error('Preview creation error:', error);
+      setTerminalOutput(prev => [
+        ...prev,
+        `✗ Failed to create preview: ${error.message}`,
+        ''
+      ]);
+    } finally {
+      setIsSharingPreview(false);
+    }
+  }, [files]);
+
+  // Copy deployment URL to clipboard
+  const handleCopyDeploymentUrl = useCallback(async () => {
+    if (deploymentUrl) {
+      await navigator.clipboard.writeText(deploymentUrl);
+      setTerminalOutput(prev => [...prev, '📋 Deployment URL copied to clipboard', '']);
+    }
+  }, [deploymentUrl]);
+
+  // Copy preview URL to clipboard
+  const handleCopyPreviewUrl = useCallback(async () => {
+    if (previewUrl) {
+      await navigator.clipboard.writeText(previewUrl);
+      setTerminalOutput(prev => [...prev, '📋 Preview URL copied to clipboard', '']);
+    }
+  }, [previewUrl]);
 
   // Handle AI code generation
   const handleAICodeGenerated = useCallback((generatedCode: string, language: string) => {
@@ -321,9 +423,23 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
             Run
           </button>
           <button
+            onClick={handleSharePreview}
+            disabled={isSharingPreview}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
+            title="Create a temporary shareable preview link (expires in 24 hours)"
+          >
+            {isSharingPreview ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Share2 className="w-4 h-4" />
+            )}
+            Share
+          </button>
+          <button
             onClick={handleDeploy}
             disabled={isDeploying}
             className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
+            title="Deploy to Cloudflare Pages"
           >
             {isDeploying ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -412,9 +528,33 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
           {/* Terminal */}
           {showTerminal && (
             <div className="h-48 border-t border-editor-border flex flex-col">
-              <div className="h-9 bg-editor-sidebar border-b border-editor-border flex items-center px-4">
-                <TerminalIcon className="w-4 h-4 text-gray-400 mr-2" />
-                <span className="text-sm text-gray-400">Terminal</span>
+              <div className="h-9 bg-editor-sidebar border-b border-editor-border flex items-center justify-between px-4">
+                <div className="flex items-center">
+                  <TerminalIcon className="w-4 h-4 text-gray-400 mr-2" />
+                  <span className="text-sm text-gray-400">Terminal</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {deploymentUrl && (
+                    <button
+                      onClick={handleCopyDeploymentUrl}
+                      className="flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300 transition-colors"
+                      title="Copy deployment URL"
+                    >
+                      <Copy className="w-3 h-3" />
+                      Copy Deploy URL
+                    </button>
+                  )}
+                  {previewUrl && (
+                    <button
+                      onClick={handleCopyPreviewUrl}
+                      className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                      title="Copy preview URL"
+                    >
+                      <Copy className="w-3 h-3" />
+                      Copy Preview URL
+                    </button>
+                  )}
+                </div>
               </div>
               <Terminal output={terminalOutput} />
             </div>

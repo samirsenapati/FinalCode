@@ -11,11 +11,13 @@ Build apps by simply describing what you want. FinalCode uses AI to generate cle
 - **🔐 User Authentication** - Secure login with email/password or GitHub OAuth
 - **🤖 AI Code Generation** - Describe what you want, get working code
 - **📝 Professional Code Editor** - Syntax highlighting, autocomplete, VS Code theme
-- **👁️ Live Preview** - See changes in real-time
+- **👁️ Live Preview** - See changes in real-time with React/JSX support
 - **📁 File Management** - Create, edit, delete project files
 - **🎨 Modern UI** - Clean, professional interface
 - **📱 Responsive Preview** - Test desktop, tablet, and mobile views
-- **🚀 One-Click Deploy** - Deploy your apps instantly (coming soon)
+- **🚀 One-Click Deploy** - Deploy your apps to Cloudflare Pages instantly
+- **🔗 Share Preview** - Generate temporary shareable links (24-hour expiry)
+- **⚡ React Support** - Build and preview React apps with browser-based JSX compilation
 
 ---
 
@@ -66,14 +68,19 @@ npm install
    - Enable **Email** provider
    - Configure email templates if desired
 
-3. **Enable GitHub OAuth (Optional):**
+3. **Run Database Migrations:**
+   - Go to **SQL Editor** in your Supabase dashboard
+   - Run the migration file: `supabase/migrations/20251213_create_deployments.sql`
+   - This creates tables for deployments and preview URLs
+
+4. **Enable GitHub OAuth (Optional):**
    - Go to **Authentication** → **Providers**
    - Enable **GitHub** provider
    - Follow [Supabase's GitHub OAuth guide](https://supabase.com/docs/guides/auth/social-login/auth-github) to create a GitHub OAuth App
    - Add the callback URL: `https://your-project.supabase.co/auth/v1/callback`
    - Copy your GitHub Client ID and Client Secret into Supabase
 
-4. **Add Environment Variables:**
+5. **Add Environment Variables:**
    - Copy `.env.example` to `.env.local`:
      ```bash
      cp .env.example .env.local
@@ -122,6 +129,20 @@ Then open [http://localhost:3000](http://localhost:3000) in your browser — you
 - Ask for features: "Add a button that shows a random quote"
 - Iterate: "Now add a feature to mark tasks as complete"
 
+### Deployment & Sharing
+
+1. **Share Preview** (Blue Button) - Create a temporary shareable link (expires in 24 hours)
+   - Perfect for getting feedback or showing work-in-progress
+   - No deployment needed, instant URL generation
+   - Anyone can view without authentication
+
+2. **Deploy** (Purple Button) - Deploy to Cloudflare Pages for permanent hosting
+   - Creates a live, public URL (e.g., `https://my-app-abc123.finalcode.dev`)
+   - Free SSL/HTTPS and global CDN
+   - Requires [Cloudflare setup](docs/DEPLOYMENT.md) (optional)
+
+📚 **[Full Deployment Guide →](docs/DEPLOYMENT.md)**
+
 ---
 
 ## 📁 Project Structure
@@ -130,8 +151,10 @@ Then open [http://localhost:3000](http://localhost:3000) in your browser — you
 finalcode/
 ├── app/
 │   ├── api/
-│   │   └── chat/
-│   │       └── route.ts      # AI chat endpoint
+│   │   ├── chat/route.ts     # AI chat endpoint
+│   │   ├── deploy/route.ts   # Cloudflare Pages deployment
+│   │   └── preview/route.ts  # Temporary preview URLs
+│   ├── preview/[id]/page.tsx # Public preview viewer
 │   ├── globals.css           # Global styles
 │   ├── layout.tsx            # Root layout
 │   ├── login/page.tsx        # Supabase auth page
@@ -144,12 +167,17 @@ finalcode/
 │   └── editor/
 │       ├── AIChat.tsx        # AI chat sidebar
 │       ├── CodeEditor.tsx    # Code editor (CodeMirror)
+│       ├── EditorPage.tsx    # Main IDE container
 │       ├── FileTree.tsx      # File explorer
-│       ├── Preview.tsx       # Live preview
+│       ├── Preview.tsx       # Live preview (supports React)
 │       └── Terminal.tsx      # Output terminal
 ├── lib/supabase/             # Supabase client helpers
 │   ├── client.ts             # Browser client for Supabase
 │   └── server.ts             # Server client with auth cookies
+├── supabase/migrations/      # Database migrations
+│   └── 20251213_create_deployments.sql
+├── docs/
+│   └── DEPLOYMENT.md         # Deployment guide
 ├── .env.example              # Environment template
 ├── package.json              # Dependencies
 └── README.md                 # This file
@@ -182,6 +210,12 @@ Your app will be live at `https://your-project.vercel.app`!
 | `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anonymous client key |
 | `NEXT_PUBLIC_SITE_URL` | No | Public site URL for OAuth redirects |
+| `NEXT_PUBLIC_APP_URL` | No | App URL for preview URLs |
+| `CLOUDFLARE_ACCOUNT_ID` | No* | Cloudflare account ID (for deployments) |
+| `CLOUDFLARE_API_TOKEN` | No* | Cloudflare API token (for deployments) |
+| `CLOUDFLARE_PROJECT_NAME` | No | Cloudflare Pages project name (default: finalcode) |
+
+\* Required only if you want to enable the deployment feature
 
 ---
 
@@ -212,12 +246,16 @@ Your app will be live at `https://your-project.vercel.app`!
 ## 🛣️ Roadmap
 
 - [x] **User Authentication** - Secure login with Supabase ✅
+- [x] **Real Deployment** - Deploy to Cloudflare Pages ✅
+- [x] **Preview Sharing** - Temporary shareable URLs ✅
+- [x] **React Support** - Browser-based JSX compilation ✅
 - [ ] **Database Integration** - Persist projects to your account
-- [ ] **Real Deployment** - Deploy user apps to custom URLs
+- [ ] **Deployment History** - View and manage all deployments
 - [ ] **Collaboration** - Work together in real-time
 - [ ] **Templates** - Start from pre-built templates
-- [ ] **More Languages** - Python, TypeScript, React
+- [ ] **More Frameworks** - Vue, Svelte, Angular
 - [ ] **AI Improvements** - Smarter code generation
+- [ ] **Custom Domains** - Use your own domain for deployments
 
 ---
 

@@ -20,8 +20,88 @@ export default function Preview({ files }: PreviewProps) {
   const [viewport, setViewport] = useState<ViewportSize>('desktop');
   const [key, setKey] = useState(0); // Force iframe refresh
 
-  // Generate preview HTML
-  const generatePreviewHTML = () => {
+  // Check if project uses React/JSX
+  const isReactProject = () => {
+    return Object.keys(files).some(
+      (filename) =>
+        (filename.endsWith('.jsx') || filename.endsWith('.tsx')) ||
+        Object.values(files).some((content) =>
+          content.includes('React') || content.includes('import React')
+        )
+    );
+  };
+
+  // Generate preview HTML for React projects
+  const generateReactPreviewHTML = () => {
+    const cssFile = files['style.css'] || '';
+    const jsxFiles = Object.entries(files).filter(
+      ([filename]) => filename.endsWith('.jsx') || filename.endsWith('.js') || filename.endsWith('.tsx')
+    );
+
+    // Find the main/App component
+    const mainFile = jsxFiles.find(([filename]) =>
+      filename.toLowerCase().includes('app') || filename.toLowerCase().includes('main')
+    ) || jsxFiles[0];
+
+    if (!mainFile) {
+      return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>${cssFile}</style>
+        </head>
+        <body>
+          <div id="root"></div>
+          <p style="color: #666; text-align: center; padding: 20px;">
+            Create an App.jsx or main.jsx file to see the React preview.
+          </p>
+        </body>
+        </html>
+      `;
+    }
+
+    const [filename, jsxContent] = mainFile;
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>React Preview</title>
+        <style>${cssFile}</style>
+        <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+        <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+        <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+        <script>
+          window.onerror = function(msg, url, line, col, error) {
+            console.error('Preview Error:', msg, 'at line', line);
+            document.getElementById('root').innerHTML = '<div style="color: red; padding: 20px;">Error: ' + msg + '</div>';
+            return false;
+          };
+        </script>
+      </head>
+      <body>
+        <div id="root"></div>
+        <script type="text/babel">
+          ${jsxContent}
+
+          // Auto-render if App component exists
+          const rootElement = document.getElementById('root');
+          if (typeof App !== 'undefined') {
+            const root = ReactDOM.createRoot(rootElement);
+            root.render(<App />);
+          } else {
+            rootElement.innerHTML = '<p style="color: #666; padding: 20px;">Define an App component to render</p>';
+          }
+        </script>
+      </body>
+      </html>
+    `;
+  };
+
+  // Generate preview HTML for static sites
+  const generateStaticPreviewHTML = () => {
     const htmlFile = files['index.html'] || '';
     const cssFile = files['style.css'] || '';
     const jsFile = files['script.js'] || '';
@@ -85,6 +165,14 @@ export default function Preview({ files }: PreviewProps) {
     );
 
     return previewHTML;
+  };
+
+  // Generate preview HTML based on project type
+  const generatePreviewHTML = () => {
+    if (isReactProject()) {
+      return generateReactPreviewHTML();
+    }
+    return generateStaticPreviewHTML();
   };
 
   // Update preview when files change
