@@ -141,9 +141,9 @@ CREATE TRIGGER update_usage_tracking_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
--- Trigger to update updated_at on projects
-CREATE TRIGGER update_projects_updated_at
-  BEFORE UPDATE ON public.projects
+-- Trigger to update updated_at on legacy projects
+CREATE TRIGGER update_projects_legacy_updated_at
+  BEFORE UPDATE ON public.projects_legacy
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
