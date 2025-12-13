@@ -100,6 +100,7 @@ export async function incrementProjectCount(userId: string) {
 
 export async function decrementProjectCount(userId: string) {
   const supabase = createClient();
+  if (!supabase) return;
 
   const { data: usage } = await supabase
     .from('usage_tracking')
