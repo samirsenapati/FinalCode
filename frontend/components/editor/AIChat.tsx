@@ -33,7 +33,7 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
     {
       id: '1',
       role: 'assistant',
-      content: "Hi! I'm your AI coding assistant. 🚀\n\nTell me what you want to build, and I'll create the code for you. Try something like:\n\n- \"Create a beautiful todo app\"\n- \"Build a calculator with a modern design\"\n- \"Make a landing page for my startup\"\n\nI can write HTML, CSS, and JavaScript to bring your ideas to life!",
+      content: "Hi! I'm your AI coding assistant.\n\nTell me what you want to build, and I'll create the code for you. Try something like:\n\n- \"Create a beautiful todo app\"\n- \"Build a calculator with a modern design\"\n- \"Make a landing page for my startup\"\n\nI can write HTML, CSS, and JavaScript to bring your ideas to life!",
       timestamp: new Date(),
     }
   ]);
