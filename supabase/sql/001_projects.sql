@@ -8,6 +8,12 @@
 -- Ensure uuid generator is available
 create extension if not exists pgcrypto;
 
+-- IMPORTANT: This SQL assumes you are NOT also applying the older migrations in
+-- `supabase/migrations/*` that create a conflicting `public.projects` table (JSONB `files`).
+-- For a production Supabase, choose ONE schema:
+--  - Either use this normalized schema (projects + project_files)
+--  - Or migrate the existing projects table to match this file.
+
 -- Projects table
 -- NOTE: If your Supabase already has a `public.projects` table (from older migrations),
 -- you should either drop/rename it before running this file or migrate it.
