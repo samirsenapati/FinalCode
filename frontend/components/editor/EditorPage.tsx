@@ -391,6 +391,20 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
   const handleDeploy = useCallback(async () => {
     try {
       setIsDeploying(true);
+
+  // Prepare WebContainer early (optional)
+  useEffect(() => {
+    (async () => {
+      try {
+        if (webcontainerReadyRef.current) return;
+        webcontainerReadyRef.current = true;
+        // Lazy boot by writing files; actual boot happens in runner
+      } catch {
+        // ignore
+      }
+    })();
+  }, []);
+
       setTerminalOutput(prev => [...prev, '> Deploying to Cloudflare Pages...']);
 
       // Get project name from user
