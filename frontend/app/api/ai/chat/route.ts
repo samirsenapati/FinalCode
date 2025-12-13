@@ -67,7 +67,11 @@ export async function POST(request: NextRequest) {
     if (!admin) return jsonError('Server is missing SUPABASE_SERVICE_ROLE_KEY', 500);
 
     // Reset daily usage if needed
-    await admin.rpc('reset_daily_usage').catch(() => null);
+    try {
+      await admin.rpc('reset_daily_usage');
+    } catch {
+      // ignore
+    }
 
     const { data: usageRows, error: usageErr } = await admin.rpc('get_user_usage', {
       p_user_id: user.id,
