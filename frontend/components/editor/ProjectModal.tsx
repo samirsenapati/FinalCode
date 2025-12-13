@@ -144,7 +144,7 @@ export default function ProjectModal({
           </div>
 
           <p className="text-xs text-gray-500" data-testid="projects-modal-footnote">
-            Note: If you haven't created the database tables yet, run <code>supabase/sql/001_projects.sql</code> in your Supabase SQL Editor.
+            Projects are stored in Supabase. If you are running this in production, the database must be migrated.
           </p>
         </div>
       </div>
