@@ -9,13 +9,15 @@ Build apps by simply describing what you want. FinalCode uses AI to generate cle
 ## ✨ Features
 
 - **🔐 User Authentication** - Supabase auth (email/password + GitHub OAuth)
-- **🤖 AI Code Generation (BYOK)** - Use your own OpenAI/Anthropic key (stored only in browser localStorage)
+- **🤖 AI Code Generation**
+  - **Managed AI (default):** server-side keys, per-user rate limits and daily caps
+  - **BYOK (optional):** user-provided key stored only in browser localStorage
 - **📝 Code Editor** - CodeMirror editor with syntax highlighting
 - **👁️ Live Preview** - Real-time preview (static + React/JSX via Babel standalone)
 - **📁 Projects (Save/Load)** - Create, list, open, delete projects and auto-save files to Supabase DB
 - **⚡ Run JavaScript (in-browser)** - Execute JS with WebContainers (Node in the browser)
 
-> Note: Deploy/Share are currently hidden in the UI for Scope B.
+> Note: Deploy/Share are currently hidden in the UI for now.
 
 ---
 
