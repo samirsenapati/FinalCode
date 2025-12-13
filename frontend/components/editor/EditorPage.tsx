@@ -623,6 +623,7 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
             onClick={() => startSignOut(() => signOut())}
             disabled={isSigningOut}
             className="flex items-center gap-2 bg-editor-bg border border-editor-border hover:bg-white/5 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+            data-testid="topbar-logout-button"
           >
             {isSigningOut ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
             Logout
