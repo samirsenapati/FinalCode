@@ -184,28 +184,26 @@ finalcode/
 
 ---
 
-## 🚀 Deploy to Production
+## Notes
 
-### Deploy to Vercel (Recommended - Free)
+### WebContainers on Vercel (COOP/COEP)
 
-1. Push your code to GitHub
-2. Go to [vercel.com](https://vercel.com)
-3. Click "New Project"
-4. Import your GitHub repository
-5. Add environment variables:
-   - `ANTHROPIC_API_KEY` = your API key
-   - `NEXT_PUBLIC_SUPABASE_URL` = your Supabase project URL
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = your Supabase anon key
-   - `NEXT_PUBLIC_SITE_URL` = your Vercel deployment URL (e.g., `https://your-app.vercel.app`)
-6. Click "Deploy"
+WebContainers require cross-origin isolation. This repo sets:
+- `Cross-Origin-Opener-Policy: same-origin`
+- `Cross-Origin-Embedder-Policy: require-corp`
 
-Your app will be live at `https://your-project.vercel.app`!
+in `frontend/next.config.js`. Vercel should preserve these headers.
+If you run behind an additional proxy/CDN, ensure it does not strip them.
 
-### Environment Variables for Production
+### AI modes
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `ANTHROPIC_API_KEY` | Yes | Your Claude API key |
+- **Managed AI (default):** calls `/api/ai/chat` from the browser. Server uses your env keys and enforces per-user usage caps via Supabase.
+- **BYOK (optional):** user stores their own key in localStorage and calls provider APIs directly.
+
+### Production scripts
+
+- `yarn build` creates the production build.
+- `yarn start` starts **next start** when `NODE_ENV=production` and a build exists; otherwise it falls back to dev (useful for local dev + this environment).
 | `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anonymous client key |
 | `NEXT_PUBLIC_SITE_URL` | No | Public site URL for OAuth redirects |
