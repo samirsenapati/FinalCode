@@ -33,26 +33,21 @@ Or download as ZIP from GitHub and extract it.
 
 ### Step 2: Install Dependencies
 
+This repo uses **Yarn**:
+
 ```bash
-npm install
+cd frontend
+yarn install
 ```
 
-### Step 3: Configure AI (Required)
+### Step 3: Configure AI (BYOK)
 
-1. **Get an API Key:**
-   - Go to [console.anthropic.com](https://console.anthropic.com/)
-   - Sign up or log in
-   - Create a new API key
+FinalCode uses **BYOK (Bring Your Own Key)**:
+- You paste your OpenAI or Anthropic API key in the app (AI Settings)
+- The key is stored **only in your browser localStorage**
+- The key is **never stored in Supabase**
 
-2. **Add the Key:**
-   - Copy `.env.example` to `.env.local`:
-     ```bash
-     cp .env.example .env.local
-     ```
-   - Open `.env.local` and add your key:
-     ```
-     ANTHROPIC_API_KEY=sk-ant-your-actual-key-here
-     ```
+⚠️ Because this MVP calls provider APIs directly from the browser, do not use highly privileged keys.
 
 ### Step 4: Configure Supabase Auth (Required)
 
