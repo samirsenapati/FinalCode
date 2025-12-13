@@ -143,6 +143,8 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
 
   const [isRunning, setIsRunning] = useState(false);
 
+  const { isIsolated } = useCrossOriginIsolation();
+
   const refreshProjects = useCallback(async () => {
     const list = await listProjects();
     setProjects(list);
