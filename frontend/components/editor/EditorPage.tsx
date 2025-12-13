@@ -615,7 +615,7 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" data-testid="topbar-actions">
           {userEmail && (
             <span className="text-sm text-gray-300 hidden sm:inline">{userEmail}</span>
           )}
