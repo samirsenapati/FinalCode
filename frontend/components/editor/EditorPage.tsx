@@ -233,6 +233,11 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
     }
   }, [files, activeFile]);
 
+  const handleDeleteFileAndPersist = useCallback(async (filename: string) => {
+    handleDeleteFile(filename);
+    // Persistence is handled by autosave via upsert; we don't delete db rows explicitly in MVP
+  }, [handleDeleteFile]);
+
 
   const openProject = useCallback(async (projectId: string) => {
     try {
