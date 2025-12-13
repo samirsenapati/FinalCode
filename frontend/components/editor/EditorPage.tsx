@@ -178,6 +178,25 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
   const [showTerminal, setShowTerminal] = useState(true);
   const [showPreview, setShowPreview] = useState(true);
 
+  // Initial projects load
+  useEffect(() => {
+    (async () => {
+      try {
+        const list = await listProjects();
+        setProjects(list);
+
+        const last = getLastProjectId();
+        if (last && list.some((p: any) => p.id === last)) {
+          await openProject(last);
+        }
+      } catch (e: any) {
+        // Not fatal: likely tables not created yet.
+        setTerminalOutput((prev) => [...prev, `⚠ Projects not loaded: ${e?.message || e}`, '']);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Terminal output
   const [terminalOutput, setTerminalOutput] = useState<string[]>([
     '> FinalCode Terminal Ready',
