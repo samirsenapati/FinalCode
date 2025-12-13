@@ -62,8 +62,7 @@ export default function AISettingsModal({ open, onClose, onSaved }: Props) {
             <div>
               <p className="font-semibold">Security notice</p>
               <p className="text-yellow-100/90">
-                Your API key is stored only in your browser (localStorage). It is never saved to Supabase.
-                This MVP calls provider APIs directly from the browser.
+                Managed AI uses our server-side keys. BYOK stores your key only in your browser (localStorage) and never in Supabase.
               </p>
             </div>
           </div>
