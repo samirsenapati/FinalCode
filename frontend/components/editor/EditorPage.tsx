@@ -552,11 +552,33 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
       <header className="h-12 bg-editor-sidebar border-b border-editor-border flex items-center justify-between px-4">
         <div className="flex items-center gap-4">
           {/* Logo */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" data-testid="topbar-brand">
             <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
               <Zap className="w-5 h-5 text-white" />
             </div>
             <span className="font-bold text-lg text-white">FinalCode</span>
+          </div>
+
+          {/* Project + AI settings */}
+          <div className="flex items-center gap-2 ml-3">
+            <button
+              onClick={() => setShowProjectsModal(true)}
+              className="flex items-center gap-2 bg-editor-bg border border-editor-border hover:bg-white/5 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+              data-testid="topbar-projects-button"
+              title="Projects"
+            >
+              <FolderOpen className="w-4 h-4" />
+              <span className="hidden md:inline">{activeProjectName || 'Projects'}</span>
+            </button>
+            <button
+              onClick={() => setShowAISettings(true)}
+              className="flex items-center gap-2 bg-editor-bg border border-editor-border hover:bg-white/5 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+              data-testid="topbar-ai-settings-button"
+              title="AI Settings"
+            >
+              <Settings className="w-4 h-4" />
+              <span className="hidden md:inline">AI Settings</span>
+            </button>
           </div>
 
           {/* Toggle Buttons */}
