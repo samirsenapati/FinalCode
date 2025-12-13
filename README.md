@@ -86,19 +86,37 @@ FinalCode uses **BYOK (Bring Your Own Key)**:
      NEXT_PUBLIC_SITE_URL=https://your-deployment-url
      ```
 
-### Step 5: Run the App
+### Step 5: Run the App (Local)
 
 ```bash
-npm run dev
+cd frontend
+yarn dev
 ```
 
-The dev server binds to `0.0.0.0:3000` so it is reachable from host machines, Codespaces previews, or forwarded ports. Confirm it’s up with:
+Then open http://localhost:3000
 
-```bash
-curl -I http://localhost:3000
-```
+### WebContainers note (important)
 
-Then open [http://localhost:3000](http://localhost:3000) in your browser — you're ready to code! 🎉
+WebContainers require **cross-origin isolation**:
+- `Cross-Origin-Opener-Policy: same-origin`
+- `Cross-Origin-Embedder-Policy: require-corp`
+
+This repo already sets these headers in `frontend/next.config.js`.
+Some preview/proxy environments may strip headers; if WebContainers fails, test on a direct localhost/HTTPS origin that preserves headers.
+
+### GitHub Codespaces
+
+1. Create a Codespace
+2. In the terminal:
+   ```bash
+   cd frontend
+   yarn install
+   yarn dev
+   ```
+3. Open the forwarded port **3000** using the Codespaces "Ports" tab.
+
+If WebContainers doesn't work in the preview URL, it's almost always because COOP/COEP headers are missing/modified by the preview proxy.
+
 
 ---
 
