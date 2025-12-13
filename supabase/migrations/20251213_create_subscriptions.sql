@@ -103,7 +103,7 @@ CREATE POLICY "Service can insert AI request logs"
   FOR INSERT
   WITH CHECK (true);
 
--- Policies for projects table
+-- Policies for legacy projects table
 CREATE POLICY "Users can view their own projects"
   ON public.projects
   FOR SELECT
