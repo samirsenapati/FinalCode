@@ -617,6 +617,7 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
               onClick={() => setShowPreview(!showPreview)}
               className={`p-2 rounded hover:bg-white/10 transition-colors ${showPreview ? 'text-blue-400' : 'text-gray-500'}`}
               title="Toggle Preview"
+              data-testid="toggle-preview-button"
             >
               <Eye className="w-4 h-4" />
             </button>
