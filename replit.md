@@ -14,6 +14,7 @@ FinalCode is an AI-powered "vibe coding" platform that allows users to build web
 - Project persistence via Supabase
 - Subscription billing via Stripe
 - One-click deployment to Cloudflare Pages
+- Replit-style Git panel with GitHub integration (pull, push, fetch, sync)
 
 ## User Preferences
 
