@@ -440,6 +440,20 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
         '✓ Deploying assets to Cloudflare...',
         `✓ Deployed successfully!`,
         `🔗 ${data.deploymentUrl}`,
+          {/* Save status */}
+          {activeProjectId && (
+            <div className="hidden sm:flex items-center gap-2 text-xs text-gray-400 mr-2" data-testid="save-status-indicator">
+              <span className="px-2 py-1 rounded bg-white/5 border border-editor-border">
+                {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'saved' ? 'Saved' : saveStatus === 'error' ? 'Save error' : 'Idle'}
+              </span>
+              {saveStatus === 'error' && saveError && (
+                <span className="text-red-300 truncate max-w-[280px]" title={saveError} data-testid="save-status-error-text">
+                  {saveError}
+                </span>
+              )}
+            </div>
+          )}
+
         `📦 Subdomain: ${data.subdomain}.finalcode.dev`,
         ''
       ]);
