@@ -44,7 +44,7 @@ export default function AISettingsModal({ open, onClose, onSaved }: Props) {
         <div className="flex items-center justify-between border-b border-editor-border p-4">
           <div className="flex items-center gap-2">
             <KeyRound className="h-5 w-5 text-purple-400" />
-            <h2 className="text-lg font-semibold text-white">AI Settings (BYOK)</h2>
+            <h2 className="text-lg font-semibold text-white">AI Settings</h2>
           </div>
           <button
             onClick={onClose}
