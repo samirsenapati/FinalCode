@@ -38,6 +38,9 @@ import { buildNodeRunShim, getDefaultRunEntry } from '@/lib/webcontainer/runnerU
 import { runNodeScript, writeFilesToWebContainer } from '@/lib/webcontainer/runner';
 
 import { useKeyboardShortcuts } from '@/lib/hooks/useKeyboardShortcuts';
+import ProjectModal from '@/components/editor/ProjectModal';
+import { Settings, FolderOpen } from 'lucide-react';
+
 
 
 type EditorPageProps = {
