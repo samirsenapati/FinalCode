@@ -51,6 +51,7 @@ export default function FileTree({ files, activeFile, onSelectFile, onDeleteFile
           className={`file-tree-item flex items-center justify-between px-3 py-1.5 cursor-pointer group ${
             activeFile === filename ? 'active bg-white/10' : ''
           }`}
+          data-testid={`filetree-item-${filename}`}
         >
           <div className="flex items-center gap-2 min-w-0">
             {getFileIcon(filename)}
