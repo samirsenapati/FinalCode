@@ -63,6 +63,10 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription) {
 }
 
 export async function POST(request: NextRequest) {
+  if (!stripe) {
+    return NextResponse.json({ error: 'Stripe is not configured' }, { status: 500 });
+  }
+
   if (!supabaseAdmin) {
     return NextResponse.json({ error: 'Supabase is not configured' }, { status: 500 });
   }
