@@ -703,6 +703,7 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
                 }}
                 className="p-1 hover:bg-white/10 rounded transition-colors"
                 title="New File"
+                data-testid="filetree-new-file-button"
               >
                 <Plus className="w-4 h-4 text-gray-400" />
               </button>
