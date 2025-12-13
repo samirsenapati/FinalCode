@@ -130,6 +130,7 @@ export default function AuthForm({
             className="text-blue-400 hover:text-blue-300 font-semibold"
             onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
             type="button"
+            data-testid="auth-toggle-mode-button"
           >
             {mode === 'signin' ? 'Create one' : 'Sign in'}
           </button>
