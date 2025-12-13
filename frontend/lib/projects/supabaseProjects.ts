@@ -75,6 +75,9 @@ export async function createProject(params: {
 
   if (filesError) throw new ProjectsServiceError(filesError.message);
 
+  // Increment usage counter (best-effort)
+  await incrementProjectCount(user.id).catch(() => null);
+
   return { project, files: params.initialFiles };
 }
 
