@@ -61,10 +61,10 @@ FinalCode uses **BYOK (Bring Your Own Key)**:
    - Enable **Email** provider
    - Configure email templates if desired
 
-3. **Run Database Migrations:**
+3. **Create Database Tables (Projects + Files):**
    - Go to **SQL Editor** in your Supabase dashboard
-   - Run the migration file: `supabase/migrations/20251213_create_deployments.sql`
-   - This creates tables for deployments and preview URLs
+   - Run: `supabase/sql/001_projects.sql`
+   - This creates `projects` + `project_files` tables and strict Row Level Security policies
 
 4. **Enable GitHub OAuth (Optional):**
    - Go to **Authentication** → **Providers**
