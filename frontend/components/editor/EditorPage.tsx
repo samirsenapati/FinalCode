@@ -22,6 +22,20 @@ import CodeEditor from '@/components/editor/CodeEditor';
 import FileTree from '@/components/editor/FileTree';
 import Preview from '@/components/editor/Preview';
 import Terminal from '@/components/editor/Terminal';
+import { createClient } from '@/lib/supabase/client';
+import AISettingsModal from '@/components/editor/AISettingsModal';
+import type { FileMap } from '@/lib/projects/types';
+import { safeProjectName, getLastProjectId, setLastProjectId, clearLastProjectId } from '@/lib/projects/storage';
+import {
+  createProject,
+  deleteProject,
+  getProjectWithFiles,
+  listProjects,
+  upsertProjectFiles,
+} from '@/lib/projects/supabaseProjects';
+import { useDebouncedCallback } from '@/lib/hooks/useDebouncedCallback';
+import { useKeyboardShortcuts } from '@/lib/hooks/useKeyboardShortcuts';
+
 
 type EditorPageProps = {
   userEmail?: string;
