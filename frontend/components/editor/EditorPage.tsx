@@ -41,7 +41,6 @@ import { runNodeScript, writeFilesToWebContainer } from '@/lib/webcontainer/runn
 
 import { useKeyboardShortcuts } from '@/lib/hooks/useKeyboardShortcuts';
 import ProjectModal from '@/components/editor/ProjectModal';
-import { Settings, FolderOpen } from 'lucide-react';
 
 
 
