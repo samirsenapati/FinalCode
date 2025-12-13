@@ -83,8 +83,16 @@ export async function createProject(params: {
 
 export async function deleteProject(projectId: string): Promise<void> {
   const supabase = requireSupabase();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   const { error } = await supabase.from(PROJECTS_TABLE).delete().eq('id', projectId);
   if (error) throw new ProjectsServiceError(error.message);
+
+  // Decrement usage counter (best-effort)
+  if (user) await decrementProjectCount(user.id).catch(() => null);
 }
 
 export async function getProjectWithFiles(projectId: string): Promise<{ project: Project; files: FileMap }> {
