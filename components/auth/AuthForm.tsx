@@ -139,6 +139,16 @@ export default function AuthForm({
             <code className="ml-1">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> to enable authentication flows.
           </p>
         )}
+
+        <div className="pt-4 border-t border-editor-border text-center text-xs text-gray-500 space-x-4">
+          <a href="/pricing" className="hover:text-blue-400 transition-colors">Pricing</a>
+          <span>·</span>
+          <a href="/terms" className="hover:text-blue-400 transition-colors">Terms</a>
+          <span>·</span>
+          <a href="/privacy" className="hover:text-blue-400 transition-colors">Privacy</a>
+          <span>·</span>
+          <a href="/contact" className="hover:text-blue-400 transition-colors">Contact</a>
+        </div>
       </div>
     </div>
   );

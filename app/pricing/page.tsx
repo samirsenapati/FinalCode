@@ -193,6 +193,15 @@ export default function PricingPage() {
             ← Back to Home
           </a>
         </div>
+
+        {/* Footer */}
+        <div className="text-center mt-8 pt-8 border-t border-gray-700 text-sm text-gray-500 space-x-4">
+          <a href="/terms" className="hover:text-blue-400 transition-colors">Terms of Service</a>
+          <span>·</span>
+          <a href="/privacy" className="hover:text-blue-400 transition-colors">Privacy Policy</a>
+          <span>·</span>
+          <a href="/contact" className="hover:text-blue-400 transition-colors">Contact & Support</a>
+        </div>
       </div>
     </div>
   );
