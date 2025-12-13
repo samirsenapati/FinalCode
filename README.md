@@ -8,16 +8,14 @@ Build apps by simply describing what you want. FinalCode uses AI to generate cle
 
 ## ✨ Features
 
-- **🔐 User Authentication** - Secure login with email/password or GitHub OAuth
-- **🤖 AI Code Generation** - Describe what you want, get working code
-- **📝 Professional Code Editor** - Syntax highlighting, autocomplete, VS Code theme
-- **👁️ Live Preview** - See changes in real-time with React/JSX support
-- **📁 File Management** - Create, edit, delete project files
-- **🎨 Modern UI** - Clean, professional interface
-- **📱 Responsive Preview** - Test desktop, tablet, and mobile views
-- **🚀 One-Click Deploy** - Deploy your apps to Cloudflare Pages instantly
-- **🔗 Share Preview** - Generate temporary shareable links (24-hour expiry)
-- **⚡ React Support** - Build and preview React apps with browser-based JSX compilation
+- **🔐 User Authentication** - Supabase auth (email/password + GitHub OAuth)
+- **🤖 AI Code Generation (BYOK)** - Use your own OpenAI/Anthropic key (stored only in browser localStorage)
+- **📝 Code Editor** - CodeMirror editor with syntax highlighting
+- **👁️ Live Preview** - Real-time preview (static + React/JSX via Babel standalone)
+- **📁 Projects (Save/Load)** - Create, list, open, delete projects and auto-save files to Supabase DB
+- **⚡ Run JavaScript (in-browser)** - Execute JS with WebContainers (Node in the browser)
+
+> Note: Deploy/Share are currently hidden in the UI for Scope B.
 
 ---
 
