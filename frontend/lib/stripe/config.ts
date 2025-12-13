@@ -6,7 +6,8 @@ if (!process.env.STRIPE_SECRET_KEY) {
 
 // Initialize Stripe
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2024-12-18.acacia',
+  // Keep in sync with installed stripe types
+  apiVersion: '2025-11-17.clover',
   typescript: true,
 });
 
