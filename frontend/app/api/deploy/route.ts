@@ -301,6 +301,10 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = createServerClient();
 
+    if (!supabase) {
+      return NextResponse.json({ error: 'Supabase configuration is missing' }, { status: 500 });
+    }
+
     // Check authentication
     const {
       data: { user },
