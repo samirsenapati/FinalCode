@@ -198,8 +198,8 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
       {/* AI mode notice */}
       <div className="px-4 pt-3" data-testid="ai-chat-mode-notice">
         <div className="rounded-lg border border-editor-border bg-editor-bg px-3 py-2 text-xs text-gray-400">
-          <span className="font-semibold text-gray-200">AI Mode:</span> {loadAISettings().mode === 'managed' ? 'Managed (server keys)' : 'BYOK (local key)'}
-          {loadAISettings().mode === 'byok' && !hasKey && (
+          <span className="font-semibold text-gray-200">AI Mode:</span> {settingsSnapshot.mode === 'managed' ? 'Managed (server keys)' : 'BYOK (local key)'}
+          {settingsSnapshot.mode === 'byok' && !hasKey && (
             <span className="ml-2 text-yellow-300">No BYOK key set — open AI Settings in the top bar.</span>
           )}
         </div>
