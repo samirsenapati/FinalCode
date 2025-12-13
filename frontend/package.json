@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev -H 0.0.0.0 -p 3000",
     "build": "next build",
-    "start": "next dev -H 0.0.0.0 -p 3000",
+    "start": "node scripts/start.js",
     "lint": "next lint"
   },
   "dependencies": {
