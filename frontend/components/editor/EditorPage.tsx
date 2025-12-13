@@ -148,9 +148,29 @@ console.log('FinalCode app loaded! Ready to build something amazing.');`
 
 export default function EditorPage({ userEmail }: EditorPageProps) {
   const [isSigningOut, startSignOut] = useTransition();
+
+  const supabase = useMemo(() => createClient(), []);
+
+  // Projects
+  const [projects, setProjects] = useState<any[]>([]);
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [activeProjectName, setActiveProjectName] = useState<string>('');
+  const [showProjectsModal, setShowProjectsModal] = useState(false);
+
   // File system state
-  const [files, setFiles] = useState<Record<string, string>>(DEFAULT_FILES);
+  const [files, setFiles] = useState<FileMap>(DEFAULT_FILES);
   const [activeFile, setActiveFile] = useState('index.html');
+
+  // Autosave state
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  // WebContainers
+  const webcontainerReadyRef = useRef(false);
+
+  // AI Settings
+  const [showAISettings, setShowAISettings] = useState(false);
+
 
   // Panel visibility state
   const [showFileTree, setShowFileTree] = useState(true);
