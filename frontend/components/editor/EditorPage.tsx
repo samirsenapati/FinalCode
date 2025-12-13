@@ -738,48 +738,66 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
             <GitBranch className="w-5 h-5" />
           </button>
 
-          <div className="flex-1" />
+        <div className="flex-1" />
 
-          <button
-            onClick={() => setLeftSidebarOpen(!leftSidebarOpen)}
-            className="sidebar-icon"
-            title={leftSidebarOpen ? 'Hide Sidebar' : 'Show Sidebar'}
-          >
-            <PanelLeftClose className={`w-5 h-5 transition-transform ${!leftSidebarOpen ? 'rotate-180' : ''}`} />
-          </button>
-        </div>
+        <button
+          onClick={() => setLeftSidebarOpen(!leftSidebarOpen)}
+          className="sidebar-icon"
+          title={leftSidebarOpen ? 'Hide Sidebar' : 'Show Sidebar'}
+        >
+          <PanelLeftClose className={`w-5 h-5 transition-transform ${!leftSidebarOpen ? 'rotate-180' : ''}`} />
+        </button>
+      </div>
 
-        {/* Left Secondary Sidebar (File Tree) */}
-        {leftSidebarOpen && (
-          <div className="w-60 bg-[#161b22] border-r border-[#30363d] flex flex-col flex-shrink-0 animate-slide-right">
-            {sidebarTab === 'files' && (
-              <>
-                <div className="h-10 px-3 flex items-center justify-between border-b border-[#21262d]">
-                  <span className="text-xs font-semibold text-[#8b949e] uppercase tracking-wider">Files</span>
-                  <button
-                    onClick={() => {
-                      const name = prompt('Enter filename (e.g., app.js):');
-                      if (name) handleCreateFile(name);
-                    }}
-                    className="p-1 hover:bg-[#21262d] rounded transition-colors"
-                    title="New File"
-                  >
-                    <Plus className="w-4 h-4 text-[#8b949e]" />
-                  </button>
-                </div>
-                <FileTree
-                  files={files}
-                  activeFile={activeFile}
-                  onSelectFile={handleSelectFile}
-                  onDeleteFile={handleDeleteFile}
-                />
-              </>
-            )}
-            {sidebarTab === 'search' && (
-              <div className="p-3">
+      {/* Left Secondary Sidebar (File Tree) */}
+      {leftSidebarOpen && (
+        <div className="w-60 bg-[#161b22] border-r border-[#30363d] flex flex-col flex-shrink-0 animate-slide-right">
+          {sidebarTab === 'files' && (
+            <>
+              <div className="h-10 px-3 flex items-center justify-between border-b border-[#21262d]">
+                <span className="text-xs font-semibold text-[#8b949e] uppercase tracking-wider">Files</span>
+                <button
+                  onClick={() => {
+                    const name = prompt('Enter filename (e.g., app.js):');
+                    if (name) handleCreateFile(name);
+                  }}
+                  className="p-1 hover:bg-[#21262d] rounded transition-colors"
+                  title="New File"
+                >
+                  <Plus className="w-4 h-4 text-[#8b949e]" />
+                </button>
+              </div>
+              <FileTree
+                files={files}
+                activeFile={activeFile}
+                onSelectFile={handleSelectFile}
+                onDeleteFile={handleDeleteFile}
+              />
+            </>
+          )}
+          {sidebarTab === 'search' && (
+            <div className="p-3">
+              <input
+                type="text"
+                placeholder="Search files..."
+                className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#6e7681] focus:outline-none focus:border-[#58a6ff]"
+              />
+              <p className="text-xs text-[#6e7681] mt-3 text-center">Search functionality coming soon</p>
+            </div>
+          )}
+          {sidebarTab === 'git' && (
+            <div className="p-3 space-y-3 text-sm text-white">
+              <div>
+                <p className="text-xs font-semibold text-[#8b949e] uppercase tracking-wider">GitHub Sync</p>
+                <p className="text-[11px] text-[#6e7681]">Pull an existing repo or push AI changes back.</p>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] text-[#8b949e]">Repository (owner/name)</label>
                 <input
-                  type="text"
-                  placeholder="Search files..."
+                  value={githubRepo}
+                  onChange={(e) => setGithubRepo(e.target.value)}
+                  placeholder="acme/my-repo"
                   className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#6e7681] focus:outline-none focus:border-[#58a6ff]"
                 />
                 <p className="text-xs text-[#6e7681] mt-3 text-center">Search functionality coming soon</p>
@@ -921,6 +939,14 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
                   Model Settings
                 </button>
               </div>
+              <button
+                onClick={() => setShowAISettings(true)}
+                className="flex items-center gap-2 px-3 py-1.5 bg-[#21262d] hover:bg-[#30363d] rounded-lg text-sm text-white transition-colors"
+              >
+                <Settings className="w-4 h-4" />
+                Model Settings
+              </button>
+            </div>
 
               <div className="h-12 px-4 flex items-center border-b border-[#21262d]">
                 <div>
@@ -950,7 +976,12 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
               <div className="flex-1">
                 <Preview files={files} />
               </div>
+
+              {gitStatus && <p className="text-[11px] text-[#9ca3af]">{gitStatus}</p>}
             </div>
+          )}
+        </div>
+      )}
 
             {bottomPanelOpen && (
               <div className="h-64 bg-[#0d1117] border border-[#30363d] rounded-xl flex flex-col overflow-hidden">
@@ -984,13 +1015,52 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
-                </div>
+                )}
+              </div>
+            ))}
+          </div>
 
                 <div className="flex-1 overflow-hidden">
                   <Terminal output={terminalOutput} />
                 </div>
               </div>
-            )}
+              <button
+                onClick={() => setShowAISettings(true)}
+                className="flex items-center gap-2 px-3 py-1.5 bg-[#21262d] hover:bg-[#30363d] rounded-lg text-sm text-white transition-colors"
+              >
+                <Settings className="w-4 h-4" />
+                Model Settings
+              </button>
+            </div>
+
+            <div className="h-12 px-4 flex items-center border-b border-[#21262d]">
+              <div>
+                <p className="text-xs text-[#8b949e] uppercase tracking-wider">AI Assistant</p>
+                <p className="text-sm text-white">Model selection & prompts</p>
+              </div>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <AIChat
+                onCodeGenerated={handleAICodeGenerated}
+                onReplaceAllFiles={handleReplaceAllFiles}
+                currentFiles={files}
+                onStatusChange={setAgentStatus}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-[0.45] flex flex-col gap-3 overflow-hidden">
+          <div className="flex-1 bg-white border border-[#30363d] rounded-xl overflow-hidden flex flex-col">
+            <div className="h-12 px-4 flex items-center justify-between border-b border-[#30363d] bg-[#0d1117]">
+              <div className="flex items-center gap-2 text-white text-sm font-medium">
+                <Eye className="w-4 h-4 text-[#58a6ff]" />
+                Live Preview
+              </div>
+            </div>
+            <div className="flex-1">
+              <Preview files={files} />
+            </div>
           </div>
         </div>
       </div>
@@ -1004,6 +1074,8 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
           Output
         </button>
       )}
+    </div>
+
     </div>
   );
 }
