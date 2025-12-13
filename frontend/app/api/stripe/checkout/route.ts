@@ -5,6 +5,10 @@ import { stripe } from '@/lib/stripe/config';
 export async function POST(request: NextRequest) {
   try {
     const supabase = createClient();
+    if (!supabase) {
+      return NextResponse.json({ error: 'Supabase configuration is missing' }, { status: 500 });
+    }
+
     const {
       data: { session },
     } = await supabase.auth.getSession();
