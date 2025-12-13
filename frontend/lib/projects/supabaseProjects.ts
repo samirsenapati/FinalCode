@@ -45,6 +45,10 @@ export async function createProject(params: {
 
   if (userError || !user) throw new ProjectsServiceError(userError?.message || 'Not authenticated');
 
+  // Enforce project cap (free plan etc.)
+  const allowed = await canCreateProject(user.id);
+  if (!allowed) throw new ProjectsServiceError('Project limit reached for your plan.');
+
   const { data: projectData, error: projectError } = await supabase
     .from(PROJECTS_TABLE)
     .insert({
