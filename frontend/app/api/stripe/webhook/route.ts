@@ -35,6 +35,8 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription) {
   }
 
   // Update subscription in database
+  const s: any = subscription as any;
+
   const { error } = await supabaseAdmin
     .from('subscriptions')
     .update({
@@ -43,9 +45,9 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription) {
       stripe_price_id: priceId,
       plan_type: status === 'active' || status === 'trialing' ? planType : 'free',
       status: status,
-      current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-      current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-      cancel_at_period_end: subscription.cancel_at_period_end,
+      current_period_start: s.current_period_start ? new Date(s.current_period_start * 1000).toISOString() : null,
+      current_period_end: s.current_period_end ? new Date(s.current_period_end * 1000).toISOString() : null,
+      cancel_at_period_end: Boolean(s.cancel_at_period_end),
     })
     .eq('user_id', userId);
 
