@@ -73,7 +73,9 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
     return codeBlocks;
   };
 
-  // Send message to AI (BYOK: calls provider APIs directly from browser)
+  // Send message to AI
+  // - Managed: call server route /api/ai/chat (server keys + per-user caps)
+  // - BYOK: call provider APIs directly from browser (localStorage key)
   const sendMessage = useCallback(async () => {
     if (!input.trim() || isLoading) return;
 
