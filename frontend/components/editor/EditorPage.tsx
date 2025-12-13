@@ -151,7 +151,7 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
   const [saveError, setSaveError] = useState<string | null>(null);
 
   // Panel states
-  const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
+  const [leftSidebarOpen, setLeftSidebarOpen] = useState(false);
   const [bottomPanelOpen, setBottomPanelOpen] = useState(true);
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('files');
   const [bottomPanelTab, setBottomPanelTab] = useState<BottomPanelTab>('console');
@@ -172,6 +172,7 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
 
   // Open files (tabs)
   const [openFiles, setOpenFiles] = useState<string[]>(['index.html']);
+  const [agentStatus, setAgentStatus] = useState('Idle — ready for your next request');
 
   const refreshProjects = useCallback(async () => {
     const list = await listProjects();
@@ -694,6 +695,25 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
           </div>
 
           <div className="h-72 border-t border-[#30363d] bg-[#0d1117] flex flex-col">
+            <div className="px-4 py-3 border-b border-[#21262d] bg-[#0b0f14] flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-[#1f2937] flex items-center justify-center flex-shrink-0">
+                <Sparkles className="w-5 h-5 text-[#58a6ff]" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-[#8b949e] uppercase tracking-wider">AI Agent</p>
+                <p className="text-sm text-white truncate" title={agentStatus}>
+                  {agentStatus}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAISettings(true)}
+                className="flex items-center gap-2 px-3 py-1.5 bg-[#21262d] hover:bg-[#30363d] rounded-lg text-sm text-white transition-colors"
+              >
+                <Settings className="w-4 h-4" />
+                Model Settings
+              </button>
+            </div>
+
             <div className="h-12 px-4 flex items-center justify-between border-b border-[#21262d]">
               <div>
                 <p className="text-xs text-[#8b949e] uppercase tracking-wider">AI Assistant</p>
@@ -712,6 +732,7 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
                 onCodeGenerated={handleAICodeGenerated}
                 onReplaceAllFiles={handleReplaceAllFiles}
                 currentFiles={files}
+                onStatusChange={setAgentStatus}
               />
             </div>
           </div>
