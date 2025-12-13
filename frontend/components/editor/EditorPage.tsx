@@ -34,6 +34,9 @@ import {
   upsertProjectFiles,
 } from '@/lib/projects/supabaseProjects';
 import { useDebouncedCallback } from '@/lib/hooks/useDebouncedCallback';
+import { buildNodeRunShim, getDefaultRunEntry } from '@/lib/webcontainer/runnerUtils';
+import { runNodeScript, writeFilesToWebContainer } from '@/lib/webcontainer/runner';
+
 import { useKeyboardShortcuts } from '@/lib/hooks/useKeyboardShortcuts';
 
 
