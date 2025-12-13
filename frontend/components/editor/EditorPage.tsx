@@ -1,8 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
 import {
-  Copy,
   Eye,
   FileCode,
   FolderOpen,
@@ -11,23 +10,25 @@ import {
   LogOut,
   Play,
   Plus,
-  Rocket,
   Settings,
-  Share2,
   Sparkles,
   Terminal as TerminalIcon,
   Zap,
 } from 'lucide-react';
 import { signOut } from '@/app/actions/auth';
 import AIChat from '@/components/editor/AIChat';
+import AISettingsModal from '@/components/editor/AISettingsModal';
 import CodeEditor from '@/components/editor/CodeEditor';
 import FileTree from '@/components/editor/FileTree';
 import Preview from '@/components/editor/Preview';
+import ProjectModal from '@/components/editor/ProjectModal';
 import Terminal from '@/components/editor/Terminal';
-import { createClient } from '@/lib/supabase/client';
-import AISettingsModal from '@/components/editor/AISettingsModal';
-import type { FileMap } from '@/lib/projects/types';
-import { safeProjectName, getLastProjectId, setLastProjectId, clearLastProjectId } from '@/lib/projects/storage';
+import { useDebouncedCallback } from '@/lib/hooks/useDebouncedCallback';
+import { useKeyboardShortcuts } from '@/lib/hooks/useKeyboardShortcuts';
+import { buildNodeRunShim, getDefaultRunEntry } from '@/lib/webcontainer/runnerUtils';
+import { runNodeScript, writeFilesToWebContainer } from '@/lib/webcontainer/runner';
+import type { FileMap, Project } from '@/lib/projects/types';
+import { clearLastProjectId, getLastProjectId, safeProjectName, setLastProjectId } from '@/lib/projects/storage';
 import {
   createProject,
   deleteProject,
@@ -35,21 +36,12 @@ import {
   listProjects,
   upsertProjectFiles,
 } from '@/lib/projects/supabaseProjects';
-import { useDebouncedCallback } from '@/lib/hooks/useDebouncedCallback';
-import { buildNodeRunShim, getDefaultRunEntry } from '@/lib/webcontainer/runnerUtils';
-import { runNodeScript, writeFilesToWebContainer } from '@/lib/webcontainer/runner';
-
-import { useKeyboardShortcuts } from '@/lib/hooks/useKeyboardShortcuts';
-import ProjectModal from '@/components/editor/ProjectModal';
-
-
 
 type EditorPageProps = {
   userEmail?: string;
 };
 
-// Default starter code
-const DEFAULT_FILES: Record<string, string> = {
+const DEFAULT_FILES: FileMap = {
   'index.html': `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -60,7 +52,7 @@ const DEFAULT_FILES: Record<string, string> = {
 </head>
 <body>
   <div class="container">
-    <h1>🚀 Welcome to FinalCode!</h1>
+    <h1>Welcome to FinalCode</h1>
     <p>Start building by chatting with AI on the right panel.</p>
     <p>Try saying: "Create a todo app with a modern design"</p>
     <button id="demo-btn">Click Me!</button>
@@ -69,257 +61,221 @@ const DEFAULT_FILES: Record<string, string> = {
   <script src="script.js"></script>
 </body>
 </html>`,
-  'style.css': `* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+  'style.css': `* { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-  font-family: 'Segoe UI', system-ui, sans-serif;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  background: #0b1220;
+  color: white;
   min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
 }
 
 .container {
-  background: white;
-  padding: 3rem;
-  border-radius: 20px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  text-align: center;
-  max-width: 500px;
+  width: min(720px, 92vw);
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 16px;
+  padding: 28px;
+  box-shadow: 0 18px 40px rgba(0,0,0,0.35);
 }
 
-h1 {
-  color: #1a202c;
-  margin-bottom: 1rem;
-  font-size: 2rem;
-}
+h1 { font-size: 28px; margin-bottom: 12px; }
 
-p {
-  color: #4a5568;
-  margin-bottom: 1rem;
-  line-height: 1.6;
-}
+p { opacity: 0.9; margin-bottom: 10px; line-height: 1.5; }
 
 button {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  margin-top: 10px;
+  border: 0;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
   color: white;
-  border: none;
-  padding: 12px 32px;
-  font-size: 1rem;
+  padding: 10px 16px;
   border-radius: 10px;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-  margin-top: 1rem;
 }
 
-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
-}
-
-#output {
-  margin-top: 1.5rem;
-  padding: 1rem;
-  background: #f7fafc;
-  border-radius: 10px;
-  color: #667eea;
-  font-weight: 600;
-  min-height: 50px;
-}`,
-  'script.js': `// Welcome to FinalCode! 🎉
-// This is your JavaScript file
-
-let clickCount = 0;
+#output { margin-top: 12px; opacity: 0.95; }`,
+  'script.js': `let clickCount = 0;
 
 document.getElementById('demo-btn').addEventListener('click', () => {
   clickCount++;
   const output = document.getElementById('output');
-
-  if (clickCount === 1) {
-    output.textContent = "Nice! You clicked the button! 🎉";
-  } else {
-    output.textContent = \`You've clicked \${clickCount} times! Keep going! 🚀\`;
-  }
+  output.textContent = clickCount === 1 ? 'Nice! You clicked the button.' : 'Clicks: ' + clickCount;
 });
 
-console.log('FinalCode app loaded! Ready to build something amazing.');`
+console.log('FinalCode app loaded');`,
 };
 
 export default function EditorPage({ userEmail }: EditorPageProps) {
   const [isSigningOut, startSignOut] = useTransition();
 
-  const supabase = useMemo(() => createClient(), []);
-
   // Projects
-  const [projects, setProjects] = useState<any[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [activeProjectName, setActiveProjectName] = useState<string>('');
   const [showProjectsModal, setShowProjectsModal] = useState(false);
 
-  // File system state
+  // File system
   const [files, setFiles] = useState<FileMap>(DEFAULT_FILES);
   const [activeFile, setActiveFile] = useState('index.html');
 
-  // Autosave state
+  // Autosave
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  // WebContainers
-  const webcontainerReadyRef = useRef(false);
-
-  // AI Settings
-  const [showAISettings, setShowAISettings] = useState(false);
-
-
-  // Panel visibility state
+  // UI panels
   const [showFileTree, setShowFileTree] = useState(true);
   const [showAIChat, setShowAIChat] = useState(true);
   const [showTerminal, setShowTerminal] = useState(true);
   const [showPreview, setShowPreview] = useState(true);
 
-  // Initial projects load (after openProject is defined)
-  // implemented later in file
+  // Modals
+  const [showAISettings, setShowAISettings] = useState(false);
 
-  // Terminal output
+  // Terminal
   const [terminalOutput, setTerminalOutput] = useState<string[]>([
     '> FinalCode Terminal Ready',
-    '> Type your commands or click Run to execute code',
-    ''
+    '> Create a project to enable autosave',
+    '',
   ]);
 
-  // Loading states
   const [isRunning, setIsRunning] = useState(false);
-  const [isDeploying, setIsDeploying] = useState(false);
-  const [isSharingPreview, setIsSharingPreview] = useState(false);
-
-  // Deployment state
-  const [deploymentUrl, setDeploymentUrl] = useState<string>('');
-  const [previewUrl, setPreviewUrl] = useState<string>('');
-
-  // Update file content
-  const handleCodeChange = useCallback((newCode: string) => {
-    setFiles(prev => ({
-      ...prev,
-      [activeFile]: newCode
-    }));
-  }, [activeFile]);
-
-  // Create new file
-  const handleCreateFile = useCallback((filename: string) => {
-    if (!files[filename]) {
-      let content = '';
-      if (filename.endsWith('.html')) {
-        content = '<!DOCTYPE html>\n<html>\n<head>\n  <title>New Page</title>\n</head>\n<body>\n  \n</body>\n</html>';
-      } else if (filename.endsWith('.css')) {
-        content = '/* New stylesheet */\n';
-      } else if (filename.endsWith('.js')) {
-        content = '// New JavaScript file\n';
-      }
-      setFiles(prev => ({ ...prev, [filename]: content }));
-      setActiveFile(filename);
-    }
-  }, [files]);
-
-  // Delete file
-  const handleDeleteFile = useCallback((filename: string) => {
-    if (Object.keys(files).length > 1) {
-      const newFiles = { ...files };
-      delete newFiles[filename];
-      setFiles(newFiles);
-      if (activeFile === filename) {
-        setActiveFile(Object.keys(newFiles)[0]);
-      }
-    }
-  }, [files, activeFile]);
-
-  const handleDeleteFileAndPersist = useCallback(async (filename: string) => {
-    handleDeleteFile(filename);
-    // Persistence is handled by autosave via upsert; we don't delete db rows explicitly in MVP
-  }, [handleDeleteFile]);
-
-
-  const openProject = useCallback(async (projectId: string) => {
-    try {
-      setSaveStatus('idle');
-      setSaveError(null);
-      const { project, files: projectFiles } = await getProjectWithFiles(projectId);
-      setActiveProjectId(project.id);
-      setActiveProjectName(project.name);
-      setFiles(Object.keys(projectFiles).length ? projectFiles : DEFAULT_FILES);
-      setActiveFile(Object.keys(projectFiles).length ? Object.keys(projectFiles)[0] : 'index.html');
-      setLastProjectId(project.id);
-      setTerminalOutput((prev) => [...prev, `> Opened project: ${project.name}`, '']);
-    } catch (e: any) {
-      setTerminalOutput((prev) => [...prev, `✗ Failed to open project: ${e?.message || e}`, '']);
-    }
-  }, []);
 
   const refreshProjects = useCallback(async () => {
-    try {
-      const list = await listProjects();
-      setProjects(list);
-    } catch (e: any) {
-      // ignore
-    }
+    const list = await listProjects();
+    setProjects(list);
+    return list;
   }, []);
 
-  // Initial projects load (after openProject is defined)
+  const openProject = useCallback(async (projectId: string) => {
+    const { project, files: projectFiles } = await getProjectWithFiles(projectId);
+
+    setActiveProjectId(project.id);
+    setActiveProjectName(project.name);
+    setLastProjectId(project.id);
+
+    const fileMap = Object.keys(projectFiles).length ? projectFiles : DEFAULT_FILES;
+    setFiles(fileMap);
+
+    const nextActive = fileMap[activeFile] ? activeFile : Object.keys(fileMap)[0];
+    setActiveFile(nextActive);
+
+    setSaveStatus('idle');
+    setSaveError(null);
+
+    setTerminalOutput((prev) => [...prev, `> Opened project: ${project.name}`, '']);
+  }, [activeFile]);
+
   useEffect(() => {
     (async () => {
       try {
-        const list = await listProjects();
-        setProjects(list);
-
+        const list = await refreshProjects();
         const last = getLastProjectId();
-        if (last && list.some((p: any) => p.id === last)) {
+        if (last && list.some((p) => p.id === last)) {
           await openProject(last);
         }
       } catch (e: any) {
         setTerminalOutput((prev) => [...prev, `⚠ Projects not loaded: ${e?.message || e}`, '']);
       }
     })();
-  }, [openProject]);
+  }, [openProject, refreshProjects]);
 
-  const handleCreateProject = useCallback(async (name: string) => {
-    try {
-      const { project } = await createProject({
-        name: safeProjectName(name),
-        description: null,
-        initialFiles: files,
-      });
-      await refreshProjects();
-      await openProject(project.id);
-      setShowProjectsModal(false);
-    } catch (e: any) {
-      setTerminalOutput((prev) => [...prev, `✗ Failed to create project: ${e?.message || e}`, '']);
-    }
-  }, [files, openProject, refreshProjects]);
-
-  const handleDeleteProject = useCallback(async (projectId: string) => {
-    try {
-      await deleteProject(projectId);
-      if (activeProjectId === projectId) {
-        setActiveProjectId(null);
-        setActiveProjectName('');
-        clearLastProjectId();
-        setFiles(DEFAULT_FILES);
-        setActiveFile('index.html');
+  const handleCreateProject = useCallback(
+    async (name: string) => {
+      try {
+        const { project } = await createProject({
+          name: safeProjectName(name),
+          description: null,
+          initialFiles: files,
+        });
+        await refreshProjects();
+        await openProject(project.id);
+        setShowProjectsModal(false);
+      } catch (e: any) {
+        setTerminalOutput((prev) => [...prev, `✗ Failed to create project: ${e?.message || e}`, '']);
       }
-      await refreshProjects();
-    } catch (e: any) {
-      setTerminalOutput((prev) => [...prev, `✗ Failed to delete project: ${e?.message || e}`, '']);
-    }
-  }, [activeProjectId, refreshProjects]);
+    },
+    [files, openProject, refreshProjects]
+  );
+
+  const handleDeleteProject = useCallback(
+    async (projectId: string) => {
+      try {
+        await deleteProject(projectId);
+        if (activeProjectId === projectId) {
+          setActiveProjectId(null);
+          setActiveProjectName('');
+          clearLastProjectId();
+          setFiles(DEFAULT_FILES);
+          setActiveFile('index.html');
+          setSaveStatus('idle');
+          setSaveError(null);
+        }
+        await refreshProjects();
+      } catch (e: any) {
+        setTerminalOutput((prev) => [...prev, `✗ Failed to delete project: ${e?.message || e}`, '']);
+      }
+    },
+    [activeProjectId, refreshProjects]
+  );
+
+  const handleCodeChange = useCallback(
+    (newCode: string) => {
+      setFiles((prev) => ({
+        ...prev,
+        [activeFile]: newCode,
+      }));
+    },
+    [activeFile]
+  );
+
+  const handleCreateFile = useCallback(
+    (filename: string) => {
+      if (files[filename]) return;
+
+      let content = '';
+      if (filename.endsWith('.html')) {
+        content = '<!DOCTYPE html>\n<html>\n<head>\n  <title>New Page</title>\n</head>\n<body>\n\n</body>\n</html>';
+      } else if (filename.endsWith('.css')) {
+        content = '/* New stylesheet */\n';
+      } else if (filename.endsWith('.js')) {
+        content = '// New JavaScript file\n';
+      }
+
+      setFiles((prev) => ({ ...prev, [filename]: content }));
+      setActiveFile(filename);
+    },
+    [files]
+  );
+
+  const handleDeleteFile = useCallback(
+    async (filename: string) => {
+      if (Object.keys(files).length <= 1) return;
+
+      setFiles((prev) => {
+        const next = { ...prev };
+        delete next[filename];
+        return next;
+      });
+
+      if (activeFile === filename) {
+        const nextActive = Object.keys(files).find((f) => f !== filename);
+        if (nextActive) setActiveFile(nextActive);
+      }
+    },
+    [activeFile, files]
+  );
 
   const doSaveNow = useCallback(async () => {
-    if (!activeProjectId) return;
+    if (!activeProjectId) {
+      setTerminalOutput((prev) => [...prev, '⚠ Create a project first to enable autosave.', '']);
+      return;
+    }
+
     setSaveStatus('saving');
     setSaveError(null);
+
     try {
       await upsertProjectFiles(activeProjectId, files);
       setSaveStatus('saved');
@@ -332,13 +288,11 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
 
   const { debounced: debouncedSave } = useDebouncedCallback(doSaveNow, 1000);
 
-  // Auto-save when files change
   useEffect(() => {
     if (!activeProjectId) return;
     debouncedSave();
-  }, [files, activeProjectId, debouncedSave]);
+  }, [activeProjectId, debouncedSave, files]);
 
-  // Save on Ctrl+S / Cmd+S
   useKeyboardShortcuts([
     {
       key: 's',
@@ -350,40 +304,37 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
     },
   ]);
 
-  // Run code in WebContainers (in-browser)
   const handleRun = useCallback(async () => {
     try {
       setIsRunning(true);
-      setTerminalOutput((prev) => [...prev, '> Booting WebContainer...', '']);
+      setTerminalOutput((prev) => [...prev, '> Running in WebContainers...', '']);
 
       const entry = getDefaultRunEntry(files);
       if (!entry) {
         setTerminalOutput((prev) => [
           ...prev,
-          '⚠ No runnable JS entry found. Create run.js or script.js (or index.js).',
-          '✓ Preview still works for HTML/CSS/JS via iframe.',
+          '⚠ No runnable JS entry found for Node.',
+          'Create run.js (recommended) or script.js / index.js.',
+          'Tip: HTML projects can be previewed in the Preview panel without Run.',
           '',
         ]);
         return;
       }
 
-      const runShimPath = 'finalcode-runner.mjs';
-      const mountedFiles: Record<string, string> = {
+      const shimPath = 'finalcode-runner.mjs';
+      await writeFilesToWebContainer({
         ...files,
-        [runShimPath]: buildNodeRunShim(entry),
-      };
-
-      await writeFilesToWebContainer(mountedFiles);
-
-      setTerminalOutput((prev) => [...prev, `> Running: ${entry}`, '']);
-      const result = await runNodeScript({
-        entryPath: runShimPath,
-        onOutput: (line) => {
-          setTerminalOutput((prev) => [...prev, line]);
-        },
+        [shimPath]: buildNodeRunShim(entry),
       });
 
-      setTerminalOutput((prev) => [...prev, `✓ Process exited with code ${result.exitCode}`, '']);
+      setTerminalOutput((prev) => [...prev, `> node ${entry}`, '']);
+
+      const result = await runNodeScript({
+        entryPath: shimPath,
+        onOutput: (line) => setTerminalOutput((prev) => [...prev, line]),
+      });
+
+      setTerminalOutput((prev) => [...prev, `✓ Exit code: ${result.exitCode}`, '']);
     } catch (e: any) {
       setTerminalOutput((prev) => [...prev, `✗ Run failed: ${e?.message || e}`, '']);
     } finally {
@@ -391,19 +342,45 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
     }
   }, [files]);
 
+  const handleAICodeGenerated = useCallback(
+    (generatedCode: string, language: string) => {
+      let targetFile = activeFile;
+      if (language === 'html' || generatedCode.includes('<!DOCTYPE') || generatedCode.includes('<html')) {
+        targetFile = 'index.html';
+      } else if (
+        language === 'css' ||
+        (generatedCode.includes('{') && generatedCode.includes(':') && !generatedCode.includes('function'))
+      ) {
+        targetFile = 'style.css';
+      } else if (language === 'javascript' || language === 'js') {
+        targetFile = 'script.js';
+      }
 
+      setFiles((prev) => ({ ...prev, [targetFile]: generatedCode }));
+      setActiveFile(targetFile);
+      setTerminalOutput((prev) => [...prev, `> AI updated ${targetFile}`, '']);
+    },
+    [activeFile]
+  );
+
+  const handleReplaceAllFiles = useCallback((newFiles: Record<string, string>) => {
+    setFiles(newFiles);
+    setActiveFile(Object.keys(newFiles)[0]);
+    setTerminalOutput((prev) => [...prev, '> AI generated new project files', '']);
+  }, []);
+
+  return (
+    <div className="h-screen flex flex-col bg-editor-bg" data-testid="editor-page">
       <AISettingsModal
         open={showAISettings}
         onClose={() => setShowAISettings(false)}
-        onSaved={() => {
-          setTerminalOutput((prev) => [...prev, '> AI settings updated', '']);
-        }}
+        onSaved={() => setTerminalOutput((prev) => [...prev, '> AI settings updated', ''])}
       />
 
       <ProjectModal
         open={showProjectsModal}
         onClose={() => setShowProjectsModal(false)}
-        projects={projects as any}
+        projects={projects}
         activeProjectId={activeProjectId}
         onCreate={handleCreateProject}
         onOpen={async (id) => {
@@ -414,181 +391,13 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
         isBusy={saveStatus === 'saving'}
       />
 
-  // Deploy code to Cloudflare Pages
-  const handleDeploy = useCallback(async () => {
-    try {
-      setIsDeploying(true);
-
-  // Prepare WebContainer early (optional)
-  useEffect(() => {
-    (async () => {
-      try {
-        if (webcontainerReadyRef.current) return;
-        webcontainerReadyRef.current = true;
-        // Lazy boot by writing files; actual boot happens in runner
-      } catch {
-        // ignore
-      }
-    })();
-  }, []);
-
-      setTerminalOutput(prev => [...prev, '> Deploying to Cloudflare Pages...']);
-
-      // Get project name from user
-      const projectName = prompt('Enter a name for your project:', 'my-app') || 'my-app';
-
-      setTerminalOutput(prev => [...prev, '> Building project...']);
-
-      const response = await fetch('/api/deploy', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          projectName,
-          files,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Deployment failed');
-      }
-
-      setDeploymentUrl(data.deploymentUrl);
-      setTerminalOutput(prev => [
-        ...prev,
-        '✓ Build completed',
-        '✓ Deploying assets to Cloudflare...',
-        `✓ Deployed successfully!`,
-        `🔗 ${data.deploymentUrl}`,
-          {/* Save status */}
-          {activeProjectId && (
-            <div className="hidden sm:flex items-center gap-2 text-xs text-gray-400 mr-2" data-testid="save-status-indicator">
-              <span className="px-2 py-1 rounded bg-white/5 border border-editor-border">
-                {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'saved' ? 'Saved' : saveStatus === 'error' ? 'Save error' : 'Idle'}
-              </span>
-              {saveStatus === 'error' && saveError && (
-                <span className="text-red-300 truncate max-w-[280px]" title={saveError} data-testid="save-status-error-text">
-                  {saveError}
-                </span>
-              )}
-            </div>
-          )}
-
-        `📦 Subdomain: ${data.subdomain}.finalcode.dev`,
-        ''
-      ]);
-    } catch (error: any) {
-      console.error('Deployment error:', error);
-      setTerminalOutput(prev => [
-        ...prev,
-        `✗ Deployment failed: ${error.message}`,
-        ''
-      ]);
-    } finally {
-      setIsDeploying(false);
-    }
-  }, [files]);
-
-  // Share preview (create temporary preview URL)
-  const handleSharePreview = useCallback(async () => {
-    try {
-      setIsSharingPreview(true);
-      setTerminalOutput(prev => [...prev, '> Creating shareable preview...']);
-
-      const response = await fetch('/api/preview', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          files,
-          expiresInHours: 24,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to create preview');
-      }
-
-      setPreviewUrl(data.previewUrl);
-
-      // Copy to clipboard
-      await navigator.clipboard.writeText(data.previewUrl);
-
-      setTerminalOutput(prev => [
-        ...prev,
-        '✓ Preview created successfully!',
-        `🔗 ${data.previewUrl}`,
-        '📋 URL copied to clipboard',
-        `⏰ Expires: ${new Date(data.expiresAt).toLocaleString()}`,
-        ''
-      ]);
-    } catch (error: any) {
-      console.error('Preview creation error:', error);
-      setTerminalOutput(prev => [
-        ...prev,
-        `✗ Failed to create preview: ${error.message}`,
-        ''
-      ]);
-    } finally {
-      setIsSharingPreview(false);
-    }
-  }, [files]);
-
-  // Copy deployment URL to clipboard
-  const handleCopyDeploymentUrl = useCallback(async () => {
-    if (deploymentUrl) {
-      await navigator.clipboard.writeText(deploymentUrl);
-      setTerminalOutput(prev => [...prev, '📋 Deployment URL copied to clipboard', '']);
-    }
-  }, [deploymentUrl]);
-
-  // Copy preview URL to clipboard
-  const handleCopyPreviewUrl = useCallback(async () => {
-    if (previewUrl) {
-      await navigator.clipboard.writeText(previewUrl);
-      setTerminalOutput(prev => [...prev, '📋 Preview URL copied to clipboard', '']);
-    }
-  }, [previewUrl]);
-
-  // Handle AI code generation
-  const handleAICodeGenerated = useCallback((generatedCode: string, language: string) => {
-    // Determine which file to update based on language
-    let targetFile = activeFile;
-    if (language === 'html' || generatedCode.includes('<!DOCTYPE') || generatedCode.includes('<html')) {
-      targetFile = 'index.html';
-    } else if (language === 'css' || generatedCode.includes('{') && generatedCode.includes(':') && !generatedCode.includes('function')) {
-      targetFile = 'style.css';
-    } else if (language === 'javascript' || language === 'js') {
-      targetFile = 'script.js';
-    }
-
-    setFiles(prev => ({
-      ...prev,
-      [targetFile]: generatedCode
-    }));
-    setActiveFile(targetFile);
-    setTerminalOutput(prev => [...prev, `> AI updated ${targetFile}`, '']);
-  }, [activeFile]);
-
-  // Replace all files (for complete app generation)
-  const handleReplaceAllFiles = useCallback((newFiles: Record<string, string>) => {
-    setFiles(newFiles);
-    setActiveFile(Object.keys(newFiles)[0]);
-    setTerminalOutput(prev => [...prev, '> AI generated new project files', '']);
-  }, []);
-
-  return (
-    <div className="h-screen flex flex-col bg-editor-bg">
       {/* Top Bar */}
-      <header className="h-12 bg-editor-sidebar border-b border-editor-border flex items-center justify-between px-4">
+      <header
+        className="h-12 bg-editor-sidebar border-b border-editor-border flex items-center justify-between px-4"
+        data-testid="topbar"
+      >
         <div className="flex items-center gap-4">
-          {/* Logo */}
+          {/* Brand */}
           <div className="flex items-center gap-2" data-testid="topbar-brand">
             <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
               <Zap className="w-5 h-5 text-white" />
@@ -597,12 +406,11 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
           </div>
 
           {/* Project + AI settings */}
-          <div className="flex items-center gap-2 ml-3">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setShowProjectsModal(true)}
               className="flex items-center gap-2 bg-editor-bg border border-editor-border hover:bg-white/5 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
               data-testid="topbar-projects-button"
-              title="Projects"
             >
               <FolderOpen className="w-4 h-4" />
               <span className="hidden md:inline">{activeProjectName || 'Projects'}</span>
@@ -611,7 +419,6 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
               onClick={() => setShowAISettings(true)}
               className="flex items-center gap-2 bg-editor-bg border border-editor-border hover:bg-white/5 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
               data-testid="topbar-ai-settings-button"
-              title="AI Settings"
             >
               <Settings className="w-4 h-4" />
               <span className="hidden md:inline">AI Settings</span>
@@ -619,7 +426,7 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
           </div>
 
           {/* Toggle Buttons */}
-          <div className="flex items-center gap-1 ml-4">
+          <div className="flex items-center gap-1 ml-2" data-testid="panel-toggles">
             <button
               onClick={() => setShowFileTree(!showFileTree)}
               className={`p-2 rounded hover:bg-white/10 transition-colors ${showFileTree ? 'text-blue-400' : 'text-gray-500'}`}
@@ -655,11 +462,29 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
           </div>
         </div>
 
-        {/* Action Buttons */}
+        {/* Actions */}
         <div className="flex items-center gap-2" data-testid="topbar-actions">
-          {userEmail && (
-            <span className="text-sm text-gray-300 hidden sm:inline">{userEmail}</span>
+          {userEmail && <span className="text-sm text-gray-300 hidden sm:inline">{userEmail}</span>}
+
+          {activeProjectId && (
+            <div className="hidden sm:flex items-center gap-2 text-xs text-gray-400 mr-2" data-testid="save-status-indicator">
+              <span className="px-2 py-1 rounded bg-white/5 border border-editor-border">
+                {saveStatus === 'saving'
+                  ? 'Saving…'
+                  : saveStatus === 'saved'
+                    ? 'Saved'
+                    : saveStatus === 'error'
+                      ? 'Save error'
+                      : 'Idle'}
+              </span>
+              {saveStatus === 'error' && saveError && (
+                <span className="text-red-300 truncate max-w-[260px]" title={saveError} data-testid="save-status-error-text">
+                  {saveError}
+                </span>
+              )}
+            </div>
           )}
+
           <button
             onClick={() => startSignOut(() => signOut())}
             disabled={isSigningOut}
@@ -669,58 +494,26 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
             {isSigningOut ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
             Logout
           </button>
+
           <button
             onClick={handleRun}
             disabled={isRunning}
             className="flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
             data-testid="topbar-run-button"
           >
-            {isRunning ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Play className="w-4 h-4" />
-            )}
+            {isRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
             Run
           </button>
-          {/* Deploy + Share (out of scope for Phase 2+3 MVP) intentionally hidden */}
-          {/* 
-          <button
-            onClick={handleSharePreview}
-            disabled={isSharingPreview}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
-            title="Create a temporary shareable preview link (expires in 24 hours)"
-            data-testid="topbar-share-button"
-          >
-            {isSharingPreview ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Share2 className="w-4 h-4" />
-            )}
-            Share
-          </button>
-          <button
-            onClick={handleDeploy}
-            disabled={isDeploying}
-            className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
-            title="Deploy to Cloudflare Pages"
-            data-testid="topbar-deploy-button"
-          >
-            {isDeploying ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Rocket className="w-4 h-4" />
-            )}
-            Deploy
-          </button>
-          */}
+
+          {/* Deploy + Share intentionally hidden in Scope B */}
         </div>
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* File Tree Sidebar */}
+      <div className="flex-1 flex overflow-hidden" data-testid="editor-layout">
+        {/* File Tree */}
         {showFileTree && (
-          <aside className="w-56 bg-editor-sidebar border-r border-editor-border flex flex-col">
+          <aside className="w-56 bg-editor-sidebar border-r border-editor-border flex flex-col" data-testid="filetree-panel">
             <div className="p-3 border-b border-editor-border flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Explorer</span>
               <button
@@ -739,19 +532,18 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
               files={files}
               activeFile={activeFile}
               onSelectFile={setActiveFile}
-              onDeleteFile={handleDeleteFileAndPersist}
+              onDeleteFile={handleDeleteFile}
             />
           </aside>
         )}
 
-        {/* Editor & Preview Area */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Editor + Preview + Terminal */}
+        <div className="flex-1 flex flex-col overflow-hidden" data-testid="editor-main">
           <div className="flex-1 flex overflow-hidden">
-            {/* Code Editor */}
+            {/* Code editor */}
             <div className={`flex-1 flex flex-col overflow-hidden ${showPreview ? 'border-r border-editor-border' : ''}`}>
-              {/* Tab Bar */}
-              <div className="h-9 bg-editor-sidebar border-b border-editor-border flex items-center px-2 gap-1 overflow-x-auto">
-                {Object.keys(files).map(filename => (
+              <div className="h-9 bg-editor-sidebar border-b border-editor-border flex items-center px-2 gap-1 overflow-x-auto" data-testid="editor-tabs">
+                {Object.keys(files).map((filename) => (
                   <div
                     key={filename}
                     onClick={() => setActiveFile(filename)}
@@ -768,19 +560,14 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
                 ))}
               </div>
 
-              {/* Editor */}
-              <div className="flex-1 overflow-hidden">
-                <CodeEditor
-                  code={files[activeFile]}
-                  onChange={handleCodeChange}
-                  filename={activeFile}
-                />
+              <div className="flex-1 overflow-hidden" data-testid="code-editor-container">
+                <CodeEditor code={files[activeFile] ?? ''} onChange={handleCodeChange} filename={activeFile} />
               </div>
             </div>
 
-            {/* Preview Panel */}
+            {/* Preview */}
             {showPreview && (
-              <div className="w-1/2 flex flex-col overflow-hidden">
+              <div className="w-1/2 flex flex-col overflow-hidden" data-testid="preview-panel">
                 <div className="h-9 bg-editor-sidebar border-b border-editor-border flex items-center px-4">
                   <Eye className="w-4 h-4 text-gray-400 mr-2" />
                   <span className="text-sm text-gray-400">Preview</span>
@@ -792,54 +579,28 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
             )}
           </div>
 
-          {/* Terminal */}
           {showTerminal && (
-            <div className="h-48 border-t border-editor-border flex flex-col">
+            <div className="h-48 border-t border-editor-border flex flex-col" data-testid="terminal-panel">
               <div className="h-9 bg-editor-sidebar border-b border-editor-border flex items-center justify-between px-4">
                 <div className="flex items-center">
                   <TerminalIcon className="w-4 h-4 text-gray-400 mr-2" />
                   <span className="text-sm text-gray-400">Terminal</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  {deploymentUrl && (
-                    <button
-                      onClick={handleCopyDeploymentUrl}
-                      className="flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300 transition-colors"
-                      title="Copy deployment URL"
-                    >
-                      <Copy className="w-3 h-3" />
-                      Copy Deploy URL
-                    </button>
-                  )}
-                  {previewUrl && (
-                    <button
-                      onClick={handleCopyPreviewUrl}
-                      className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
-                      title="Copy preview URL"
-                    >
-                      <Copy className="w-3 h-3" />
-                      Copy Preview URL
-                    </button>
-                  )}
-                </div>
+                <span className="text-xs text-gray-500" data-testid="terminal-hint">Ctrl+S to save</span>
               </div>
               <Terminal output={terminalOutput} />
             </div>
           )}
         </div>
 
-        {/* AI Chat Sidebar */}
+        {/* AI Chat */}
         {showAIChat && (
-          <aside className="w-96 bg-editor-sidebar border-l border-editor-border flex flex-col">
+          <aside className="w-96 bg-editor-sidebar border-l border-editor-border flex flex-col" data-testid="ai-chat-panel">
             <div className="p-3 border-b border-editor-border flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-purple-400" />
               <span className="font-semibold text-white">AI Assistant</span>
             </div>
-            <AIChat
-              onCodeGenerated={handleAICodeGenerated}
-              onReplaceAllFiles={handleReplaceAllFiles}
-              currentFiles={files}
-            />
+            <AIChat onCodeGenerated={handleAICodeGenerated} onReplaceAllFiles={handleReplaceAllFiles} currentFiles={files} />
           </aside>
         )}
       </div>
