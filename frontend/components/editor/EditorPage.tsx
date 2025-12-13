@@ -835,6 +835,14 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
                 />
                 <p className="text-[11px] text-[#6e7681]">Stored locally in your browser for this workspace.</p>
               </div>
+              <button
+                onClick={() => setShowAISettings(true)}
+                className="flex items-center gap-2 px-3 py-1.5 bg-[#21262d] hover:bg-[#30363d] rounded-lg text-sm text-white transition-colors"
+              >
+                <Settings className="w-4 h-4" />
+                Model Settings
+              </button>
+            </div>
 
               <div className="flex gap-2">
                 <button
