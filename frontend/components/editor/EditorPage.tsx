@@ -310,6 +310,16 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
   const handleRun = useCallback(async () => {
     try {
       setIsRunning(true);
+      if (!isIsolated) {
+        setTerminalOutput((prev) => [
+          ...prev,
+          '⚠ WebContainers is not available (crossOriginIsolated is false).',
+          'Run is disabled, but Preview still works. Ensure COOP/COEP headers are preserved.',
+          '',
+        ]);
+        return;
+      }
+
       setTerminalOutput((prev) => [...prev, '> Running in WebContainers...', '']);
 
       const entry = getDefaultRunEntry(files);
