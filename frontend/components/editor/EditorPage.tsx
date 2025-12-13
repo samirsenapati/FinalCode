@@ -346,22 +346,46 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
     },
   ]);
 
-  // Run code
-  const handleRun = useCallback(() => {
-    setIsRunning(true);
-    setTerminalOutput(prev => [...prev, '> Running code...']);
+  // Run code in WebContainers (in-browser)
+  const handleRun = useCallback(async () => {
+    try {
+      setIsRunning(true);
+      setTerminalOutput((prev) => [...prev, '> Booting WebContainer...', '']);
 
-    // Simulate running
-    setTimeout(() => {
-      setTerminalOutput(prev => [
-        ...prev,
-        '✓ Code compiled successfully',
-        '✓ Preview updated',
-        ''
-      ]);
+      const entry = getDefaultRunEntry(files);
+      if (!entry) {
+        setTerminalOutput((prev) => [
+          ...prev,
+          '⚠ No runnable JS entry found. Create run.js or script.js (or index.js).',
+          '✓ Preview still works for HTML/CSS/JS via iframe.',
+          '',
+        ]);
+        return;
+      }
+
+      const runShimPath = 'finalcode-runner.mjs';
+      const mountedFiles: Record<string, string> = {
+        ...files,
+        [runShimPath]: buildNodeRunShim(entry),
+      };
+
+      await writeFilesToWebContainer(mountedFiles);
+
+      setTerminalOutput((prev) => [...prev, `> Running: ${entry}`, '']);
+      const result = await runNodeScript({
+        entryPath: runShimPath,
+        onOutput: (line) => {
+          setTerminalOutput((prev) => [...prev, line]);
+        },
+      });
+
+      setTerminalOutput((prev) => [...prev, `✓ Process exited with code ${result.exitCode}`, '']);
+    } catch (e: any) {
+      setTerminalOutput((prev) => [...prev, `✗ Run failed: ${e?.message || e}`, '']);
+    } finally {
       setIsRunning(false);
-    }, 500);
-  }, []);
+    }
+  }, [files]);
 
   // Deploy code to Cloudflare Pages
   const handleDeploy = useCallback(async () => {
