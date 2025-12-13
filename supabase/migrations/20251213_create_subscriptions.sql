@@ -57,7 +57,7 @@ CREATE INDEX IF NOT EXISTS idx_subscriptions_stripe_customer_id ON public.subscr
 CREATE INDEX IF NOT EXISTS idx_usage_tracking_user_id ON public.usage_tracking(user_id);
 CREATE INDEX IF NOT EXISTS idx_ai_request_logs_user_id ON public.ai_request_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_ai_request_logs_created_at ON public.ai_request_logs(created_at);
-CREATE INDEX IF NOT EXISTS idx_projects_user_id ON public.projects(user_id);
+CREATE INDEX IF NOT EXISTS idx_projects_legacy_user_id ON public.projects_legacy(user_id);
 
 -- Enable Row Level Security
 ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
