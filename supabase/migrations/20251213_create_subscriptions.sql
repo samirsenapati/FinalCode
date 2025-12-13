@@ -119,8 +119,8 @@ CREATE POLICY "Users can insert their own legacy projects"
   FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "Users can update their own projects"
-  ON public.projects
+CREATE POLICY "Users can update their own legacy projects"
+  ON public.projects_legacy
   FOR UPDATE
   USING (auth.uid() = user_id);
 
