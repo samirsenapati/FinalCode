@@ -38,7 +38,7 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
     }
   ]);
   const [input, setInput] = useState('');
-  const [showSettingsHint, setShowSettingsHint] = useState(false);
+  // (reserved) could show settings hint inline
   const [isLoading, setIsLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   
