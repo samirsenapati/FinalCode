@@ -26,6 +26,8 @@ const EXAMPLE_PROMPTS = [
   "Build a simple game like tic-tac-toe",
 ];
 
+import { loadAISettings } from '@/lib/ai/settings';
+
 export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFiles }: AIChatProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
