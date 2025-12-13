@@ -609,6 +609,7 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
               onClick={() => setShowTerminal(!showTerminal)}
               className={`p-2 rounded hover:bg-white/10 transition-colors ${showTerminal ? 'text-blue-400' : 'text-gray-500'}`}
               title="Toggle Terminal"
+              data-testid="toggle-terminal-button"
             >
               <TerminalIcon className="w-4 h-4" />
             </button>
