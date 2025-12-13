@@ -79,6 +79,7 @@ export async function canCreateProject(userId: string): Promise<boolean> {
 
 export async function incrementProjectCount(userId: string) {
   const supabase = createClient();
+  if (!supabase) return;
 
   const { data: usage } = await supabase
     .from('usage_tracking')
