@@ -625,6 +625,7 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
               onClick={() => setShowAIChat(!showAIChat)}
               className={`p-2 rounded hover:bg-white/10 transition-colors ${showAIChat ? 'text-blue-400' : 'text-gray-500'}`}
               title="Toggle AI Chat"
+              data-testid="toggle-ai-chat-button"
             >
               <Sparkles className="w-4 h-4" />
             </button>
