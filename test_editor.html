@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinalCode Editor Test</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #0b1220;
+            color: white;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .warning-banner {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #f59e0b;
+            border-radius: 12px;
+            background: rgba(245, 158, 11, 0.1);
+            color: #fbbf24;
+        }
+        .ai-mode-notice {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #6b7280;
+            border-radius: 12px;
+            background: rgba(107, 114, 128, 0.1);
+            color: #d1d5db;
+        }
+        button {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #059669;
+        }
+        button:disabled {
+            background: #6b7280;
+            cursor: not-allowed;
+        }
+        .run-button {
+            background: #10b981;
+        }
+        .run-button:disabled {
+            background: #6b7280;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>FinalCode Editor Test Environment</h1>
+        
+        <!-- Test crossOriginIsolated status -->
+        <div id="coi-status">
+            <h3>Cross-Origin Isolation Status</h3>
+            <p>crossOriginIsolated: <span id="coi-value"></span></p>
+        </div>
+
+        <!-- COI Warning Banner (shown when crossOriginIsolated is false) -->
+        <div id="coi-warning" class="warning-banner" data-testid="coi-warning-banner" style="display: none;">
+            <div style="font-weight: bold;">WebContainers needs cross-origin isolation</div>
+            <div style="margin-top: 5px;">
+                This page is not cross-origin isolated (<code>crossOriginIsolated</code> is false). The Run button may not work.
+                Ensure your deployment preserves these headers:
+                <div style="margin-top: 10px; font-family: monospace; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 5px; border: 1px solid rgba(245, 158, 11, 0.2);">
+                    Cross-Origin-Opener-Policy: same-origin<br>
+                    Cross-Origin-Embedder-Policy: require-corp
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Mode Notice -->
+        <div class="ai-mode-notice" data-testid="ai-chat-mode-notice">
+            <span style="font-weight: bold; color: #e5e7eb;">AI Mode:</span> 
+            <span id="ai-mode">Managed (server keys)</span>
+            <span id="byok-warning" style="margin-left: 10px; color: #fbbf24; display: none;">
+                No BYOK key set — open AI Settings in the top bar.
+            </span>
+        </div>
+
+        <!-- Run Button Test -->
+        <div>
+            <h3>Run Button Test</h3>
+            <button id="run-button" class="run-button" data-testid="topbar-run-button">
+                <span id="run-icon">▶</span> Run
+            </button>
+            <div id="run-output" style="margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 5px; min-height: 50px; font-family: monospace; font-size: 14px;">
+                > FinalCode Terminal Ready<br>
+                > Create a project to enable autosave<br>
+                <br>
+            </div>
+        </div>
+
+        <!-- AI Settings Test -->
+        <div>
+            <h3>AI Settings Test</h3>
+            <button id="ai-settings-button" data-testid="topbar-ai-settings-button">
+                ⚙️ AI Settings
+            </button>
+            
+            <!-- Mock AI Settings Modal -->
+            <div id="ai-settings-modal" data-testid="ai-settings-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 1000;">
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1f2937; border: 1px solid #374151; border-radius: 12px; padding: 20px; width: 90%; max-width: 500px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 style="margin: 0; color: white;">🔑 AI Settings</h3>
+                        <button id="close-modal" data-testid="ai-settings-close-button" style="background: none; border: none; color: #9ca3af; font-size: 20px; cursor: pointer;">×</button>
+                    </div>
+                    
+                    <div data-testid="ai-settings-warning" style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 8px; padding: 12px; margin-bottom: 16px; color: #fbbf24;">
+                        <p style="margin: 0; font-weight: bold;">⚠️ Security notice</p>
+                        <p style="margin: 5px 0 0 0; font-size: 14px;">
+                            Managed AI uses our server-side keys. BYOK stores your key only in your browser (localStorage) and never in Supabase.
+                        </p>
+                    </div>
+
+                    <div style="margin-bottom: 16px;">
+                        <label style="display: block; margin-bottom: 8px; color: #d1d5db; font-size: 14px;">Mode</label>
+                        <div data-testid="ai-settings-mode-toggle" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                            <button id="mode-managed" data-testid="ai-settings-mode-managed" style="padding: 12px; text-align: left; border: 1px solid #6366f1; background: rgba(99, 102, 241, 0.1); border-radius: 8px;">
+                                <div style="font-weight: bold; color: white;">Managed (default)</div>
+                                <div style="font-size: 12px; color: #9ca3af;">Uses server-side keys and per-user caps</div>
+                            </button>
+                            <button id="mode-byok" data-testid="ai-settings-mode-byok" style="padding: 12px; text-align: left; border: 1px solid #374151; background: #111827; border-radius: 8px;">
+                                <div style="font-weight: bold; color: #d1d5db;">BYOK</div>
+                                <div style="font-size: 12px; color: #9ca3af;">Uses your browser-stored key</div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                        <button id="clear-settings" data-testid="ai-settings-clear-button" style="background: #374151; color: #d1d5db;">Clear</button>
+                        <button id="cancel-settings" data-testid="ai-settings-cancel-button" style="background: #374151; color: #d1d5db;">Cancel</button>
+                        <button id="save-settings" data-testid="ai-settings-save-button" style="background: #7c3aed; color: white;">Save</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Test crossOriginIsolated
+        const coiValue = document.getElementById('coi-value');
+        const coiWarning = document.getElementById('coi-warning');
+        const isIsolated = window.crossOriginIsolated;
+        
+        coiValue.textContent = isIsolated;
+        coiValue.style.color = isIsolated ? '#10b981' : '#ef4444';
+        
+        if (!isIsolated) {
+            coiWarning.style.display = 'block';
+        }
+
+        // Test AI mode
+        const aiMode = document.getElementById('ai-mode');
+        const byokWarning = document.getElementById('byok-warning');
+        
+        // Simulate AI settings (default to managed)
+        let currentMode = 'managed';
+        let hasApiKey = false;
+        
+        function updateAIMode() {
+            if (currentMode === 'managed') {
+                aiMode.textContent = 'Managed (server keys)';
+                byokWarning.style.display = 'none';
+            } else {
+                aiMode.textContent = 'BYOK (local key)';
+                byokWarning.style.display = hasApiKey ? 'none' : 'inline';
+            }
+        }
+        
+        updateAIMode();
+
+        // Test Run button
+        const runButton = document.getElementById('run-button');
+        const runIcon = document.getElementById('run-icon');
+        const runOutput = document.getElementById('run-output');
+        
+        runButton.addEventListener('click', async () => {
+            runButton.disabled = true;
+            runIcon.textContent = '⏳';
+            
+            if (!isIsolated) {
+                runOutput.innerHTML += '⚠ WebContainers is not available (crossOriginIsolated is false).<br>';
+                runOutput.innerHTML += 'Run is disabled, but Preview still works. Ensure COOP/COEP headers are preserved.<br><br>';
+            } else {
+                runOutput.innerHTML += '> Running in WebContainers...<br>';
+                
+                // Simulate run process
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                runOutput.innerHTML += '> node index.js<br>';
+                await new Promise(resolve => setTimeout(resolve, 500));
+                runOutput.innerHTML += 'Hello from FinalCode!<br>';
+                runOutput.innerHTML += '✓ Exit code: 0<br><br>';
+            }
+            
+            runButton.disabled = false;
+            runIcon.textContent = '▶';
+            runOutput.scrollTop = runOutput.scrollHeight;
+        });
+
+        // Test AI Settings Modal
+        const aiSettingsButton = document.getElementById('ai-settings-button');
+        const aiSettingsModal = document.getElementById('ai-settings-modal');
+        const closeModal = document.getElementById('close-modal');
+        const cancelSettings = document.getElementById('cancel-settings');
+        const saveSettings = document.getElementById('save-settings');
+        const clearSettings = document.getElementById('clear-settings');
+        const modeManaged = document.getElementById('mode-managed');
+        const modeByok = document.getElementById('mode-byok');
+
+        aiSettingsButton.addEventListener('click', () => {
+            aiSettingsModal.style.display = 'block';
+        });
+
+        closeModal.addEventListener('click', () => {
+            aiSettingsModal.style.display = 'none';
+        });
+
+        cancelSettings.addEventListener('click', () => {
+            aiSettingsModal.style.display = 'none';
+        });
+
+        modeManaged.addEventListener('click', () => {
+            currentMode = 'managed';
+            modeManaged.style.border = '1px solid #6366f1';
+            modeManaged.style.background = 'rgba(99, 102, 241, 0.1)';
+            modeByok.style.border = '1px solid #374151';
+            modeByok.style.background = '#111827';
+        });
+
+        modeByok.addEventListener('click', () => {
+            currentMode = 'byok';
+            modeByok.style.border = '1px solid #6366f1';
+            modeByok.style.background = 'rgba(99, 102, 241, 0.1)';
+            modeManaged.style.border = '1px solid #374151';
+            modeManaged.style.background = '#111827';
+        });
+
+        saveSettings.addEventListener('click', () => {
+            updateAIMode();
+            aiSettingsModal.style.display = 'none';
+            runOutput.innerHTML += '> AI settings updated<br>';
+        });
+
+        clearSettings.addEventListener('click', () => {
+            currentMode = 'managed';
+            hasApiKey = false;
+            modeManaged.click();
+            updateAIMode();
+        });
+
+        // Close modal when clicking outside
+        aiSettingsModal.addEventListener('click', (e) => {
+            if (e.target === aiSettingsModal) {
+                aiSettingsModal.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
