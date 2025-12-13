@@ -1,5 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
+import { NextResponse } from 'next/server';
 
 // System prompt for code generation
 const SYSTEM_PROMPT = `You are FinalCode AI, an expert web developer assistant that helps users build applications through natural language.
