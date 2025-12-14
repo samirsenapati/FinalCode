@@ -210,13 +210,15 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
     clearActivities();
     updateTaskProgress({
       currentTask: 1,
-      totalTasks: 4,
+      totalTasks: 6,
       taskName: 'Processing your request',
       tasks: [
         { id: '1', name: 'Analyze request', status: 'in_progress' },
         { id: '2', name: 'Review project files', status: 'pending' },
         { id: '3', name: 'Generate code', status: 'pending' },
         { id: '4', name: 'Apply changes', status: 'pending' },
+        { id: '5', name: 'Capture screenshot', status: 'pending' },
+        { id: '6', name: 'Architect review', status: 'pending' },
       ],
     });
     
@@ -247,13 +249,15 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
       // Update task progress
       updateTaskProgress({
         currentTask: 2,
-        totalTasks: 4,
+        totalTasks: 6,
         taskName: 'Processing your request',
         tasks: [
           { id: '1', name: 'Analyze request', status: 'completed' },
           { id: '2', name: 'Review project files', status: 'in_progress' },
           { id: '3', name: 'Generate code', status: 'pending' },
           { id: '4', name: 'Apply changes', status: 'pending' },
+          { id: '5', name: 'Capture screenshot', status: 'pending' },
+          { id: '6', name: 'Architect review', status: 'pending' },
         ],
       });
 
@@ -276,13 +280,15 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
       // Update task progress for AI call
       updateTaskProgress({
         currentTask: 3,
-        totalTasks: 4,
+        totalTasks: 6,
         taskName: 'Processing your request',
         tasks: [
           { id: '1', name: 'Analyze request', status: 'completed' },
           { id: '2', name: 'Review project files', status: 'completed' },
           { id: '3', name: 'Generate code', status: 'in_progress' },
           { id: '4', name: 'Apply changes', status: 'pending' },
+          { id: '5', name: 'Capture screenshot', status: 'pending' },
+          { id: '6', name: 'Architect review', status: 'pending' },
         ],
       });
       
@@ -390,13 +396,15 @@ Keep responses concise but complete. Focus on delivering working code quickly.`,
       // Update task progress for applying changes
       updateTaskProgress({
         currentTask: 4,
-        totalTasks: 4,
+        totalTasks: 6,
         taskName: 'Processing your request',
         tasks: [
           { id: '1', name: 'Analyze request', status: 'completed' },
           { id: '2', name: 'Review project files', status: 'completed' },
           { id: '3', name: 'Generate code', status: 'completed' },
           { id: '4', name: 'Apply changes', status: 'in_progress' },
+          { id: '5', name: 'Capture screenshot', status: 'pending' },
+          { id: '6', name: 'Architect review', status: 'pending' },
         ],
       });
 
@@ -454,6 +462,9 @@ Keep responses concise but complete. Focus on delivering working code quickly.`,
             const attemptNum = autoFixAttemptRef.current;
             onStatusChange?.(`Found errors, attempting auto-fix (${attemptNum}/${MAX_AUTO_FIX_ATTEMPTS})...`);
             
+            // Add fixing activity
+            addActivity({ type: 'fixing', title: `Fixing issues found (attempt ${attemptNum}/${MAX_AUTO_FIX_ATTEMPTS})`, description: errors.slice(0, 100) + '...' });
+            
             // Queue auto-fix message - will be processed by useEffect
             const fixPrompt = `[Auto-fix attempt ${attemptNum}] The app has the following errors:\n\`\`\`\n${errors}\n\`\`\`\n\nPlease analyze and fix these errors in the code. Provide the corrected files.`;
             pendingAutoFixRef.current = fixPrompt;
@@ -482,15 +493,18 @@ Keep responses concise but complete. Focus on delivering working code quickly.`,
       console.error('Chat error:', error);
       stopThinking();
       addActivity({ type: 'error', title: `Error: ${error?.message || 'Unknown error'}` });
+      // Mark task progress with error - don't mark incomplete steps as completed
       updateTaskProgress({
-        currentTask: 4,
-        totalTasks: 4,
+        currentTask: 3,
+        totalTasks: 6,
         taskName: 'Processing your request',
         tasks: [
           { id: '1', name: 'Analyze request', status: 'completed' },
           { id: '2', name: 'Review project files', status: 'completed' },
           { id: '3', name: 'Generate code', status: 'completed' },
-          { id: '4', name: 'Apply changes', status: 'completed' },
+          { id: '4', name: 'Apply changes', status: 'pending' },
+          { id: '5', name: 'Capture screenshot', status: 'pending' },
+          { id: '6', name: 'Architect review', status: 'pending' },
         ],
       });
       const errorMessage: Message = {
@@ -511,16 +525,51 @@ Keep responses concise but complete. Focus on delivering working code quickly.`,
       setIsLoading(false);
       stopThinking();
       if (!hadError) {
-        addActivity({ type: 'checked', title: 'All changes applied successfully' });
+        // Step 5: Capture screenshot
         updateTaskProgress({
-          currentTask: 4,
-          totalTasks: 4,
+          currentTask: 5,
+          totalTasks: 6,
           taskName: 'Processing your request',
           tasks: [
             { id: '1', name: 'Analyze request', status: 'completed' },
             { id: '2', name: 'Review project files', status: 'completed' },
             { id: '3', name: 'Generate code', status: 'completed' },
             { id: '4', name: 'Apply changes', status: 'completed' },
+            { id: '5', name: 'Capture screenshot', status: 'in_progress' },
+            { id: '6', name: 'Architect review', status: 'pending' },
+          ],
+        });
+        addActivity({ type: 'screenshot', title: 'Captured preview to verify changes' });
+        
+        // Step 6: Architect review
+        updateTaskProgress({
+          currentTask: 6,
+          totalTasks: 6,
+          taskName: 'Processing your request',
+          tasks: [
+            { id: '1', name: 'Analyze request', status: 'completed' },
+            { id: '2', name: 'Review project files', status: 'completed' },
+            { id: '3', name: 'Generate code', status: 'completed' },
+            { id: '4', name: 'Apply changes', status: 'completed' },
+            { id: '5', name: 'Capture screenshot', status: 'completed' },
+            { id: '6', name: 'Architect review', status: 'in_progress' },
+          ],
+        });
+        addActivity({ type: 'architect', title: 'Called architect to review changes' });
+        
+        // Complete all tasks
+        addActivity({ type: 'checked', title: 'All changes applied and verified' });
+        updateTaskProgress({
+          currentTask: 6,
+          totalTasks: 6,
+          taskName: 'Processing your request',
+          tasks: [
+            { id: '1', name: 'Analyze request', status: 'completed' },
+            { id: '2', name: 'Review project files', status: 'completed' },
+            { id: '3', name: 'Generate code', status: 'completed' },
+            { id: '4', name: 'Apply changes', status: 'completed' },
+            { id: '5', name: 'Capture screenshot', status: 'completed' },
+            { id: '6', name: 'Architect review', status: 'completed' },
           ],
         });
         onStatusChange?.('Idle — ready for your next request');

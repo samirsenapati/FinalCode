@@ -16,6 +16,8 @@ import {
   GitBranch,
   Terminal,
   Sparkles,
+  Search,
+  Wrench,
 } from 'lucide-react';
 
 export type ActivityType = 
@@ -27,6 +29,8 @@ export type ActivityType =
   | 'reviewed'
   | 'thinking'
   | 'screenshot'
+  | 'architect'
+  | 'fixing'
   | 'error';
 
 export interface ActivityStep {
@@ -63,6 +67,8 @@ const ACTIVITY_ICONS: Record<ActivityType, { icon: React.ElementType; color: str
   reviewed: { icon: Eye, color: 'text-cyan-400' },
   thinking: { icon: Sparkles, color: 'text-pink-400' },
   screenshot: { icon: Camera, color: 'text-emerald-400' },
+  architect: { icon: Search, color: 'text-indigo-400' },
+  fixing: { icon: Wrench, color: 'text-amber-400' },
   error: { icon: AlertCircle, color: 'text-red-400' },
 };
 
@@ -75,6 +81,8 @@ const ACTIVITY_LABELS: Record<ActivityType, string> = {
   reviewed: 'Reviewed',
   thinking: 'Thinking',
   screenshot: 'Took a screenshot',
+  architect: 'Called architect',
+  fixing: 'Fixing',
   error: 'Error',
 };
 
