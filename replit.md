@@ -13,6 +13,8 @@ FinalCode is an AI-powered "vibe coding" platform that allows users to build web
 - Nested file tree for fullstack project structures
 - **Code search** - Full-text search across all project files with highlighted matches
 - **Asset uploader** - Drag-and-drop file upload with image/video/audio/document support
+- **Image paste in chat** - Paste images directly into the AI chat to describe UI mockups or designs
+- **AI response summaries** - AI provides "What I did", "How to verify", and "Next steps" at the end of each response
 - Live preview with React/JSX support via Babel
 - In-browser JavaScript execution using WebContainers (npm install, server start)
 - Project persistence via Supabase
