@@ -235,7 +235,7 @@ export async function POST(request: NextRequest) {
             { role: 'user', content: userPrompt },
           ],
           temperature: modelConfig.temperature,
-          max_tokens: modelConfig.maxTokens,
+          max_completion_tokens: modelConfig.maxTokens,
         }),
       });
 
