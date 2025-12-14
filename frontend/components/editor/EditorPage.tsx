@@ -944,6 +944,7 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
                 projectId={activeProjectId ?? undefined}
                 onRunApp={handleRun}
                 terminalOutput={terminalOutput}
+                settingsKey={aiSettingsKey}
               />
             ) : (
               <AIChat

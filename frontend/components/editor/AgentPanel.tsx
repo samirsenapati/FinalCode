@@ -18,15 +18,15 @@ import {
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { AgentStep, AgentResponse, AgentEvent } from '@/lib/agent/types';
+import { loadAISettings } from '@/lib/ai/settings';
 
 interface AgentPanelProps {
   files: Record<string, string>;
   onFilesChange: (files: Record<string, string>) => void;
   projectId?: string;
-  provider?: 'openai' | 'anthropic';
-  model?: string;
   onRunApp?: () => void;
   terminalOutput?: string[];
+  settingsKey?: number;
 }
 
 const TOOL_ICONS: Record<string, typeof FileText> = {
@@ -53,16 +53,30 @@ export default function AgentPanel({
   files,
   onFilesChange,
   projectId,
-  provider = 'openai',
-  model,
   onRunApp,
   terminalOutput,
+  settingsKey = 0,
 }: AgentPanelProps) {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [steps, setSteps] = useState<AgentStep[]>([]);
   const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Load AI settings from localStorage
+  const [aiSettings, setAiSettings] = useState<{ provider: 'openai' | 'anthropic'; model: string }>({
+    provider: 'anthropic',
+    model: 'claude-opus-4-5-20251101',
+  });
+
+  useEffect(() => {
+    try {
+      const settings = loadAISettings();
+      setAiSettings({ provider: settings.provider, model: settings.model });
+    } catch {
+      // Keep defaults
+    }
+  }, [settingsKey]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -117,8 +131,8 @@ export default function AgentPanel({
         body: JSON.stringify({
           message: userMessage,
           currentFiles: files,
-          provider,
-          model,
+          provider: aiSettings.provider,
+          model: aiSettings.model,
         }),
       });
 
