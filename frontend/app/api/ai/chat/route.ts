@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 
-type Provider = 'openai' | 'anthropic';
+type Provider = 'openai' | 'anthropic' | 'deepseek' | 'groq';
 
 type ImageAttachment = {
   name: string;
@@ -23,6 +23,8 @@ type Body = {
 // Default models - using latest and most capable
 const DEFAULT_OPENAI_MODEL = 'gpt-5.2';
 const DEFAULT_ANTHROPIC_MODEL = 'claude-opus-4-5-20251101';
+const DEFAULT_DEEPSEEK_MODEL = 'deepseek-chat';
+const DEFAULT_GROQ_MODEL = 'llama-3.3-70b-versatile';
 
 // Model-specific configurations for optimal performance
 const MODEL_CONFIGS: Record<string, { maxTokens: number; temperature?: number }> = {
@@ -36,6 +38,15 @@ const MODEL_CONFIGS: Record<string, { maxTokens: number; temperature?: number }>
   'claude-sonnet-4-20250514': { maxTokens: 8192, temperature: 0.2 },
   'claude-3-5-sonnet-latest': { maxTokens: 8192, temperature: 0.2 },
   'claude-3-5-haiku-latest': { maxTokens: 4096, temperature: 0.2 },
+  // DeepSeek models
+  'deepseek-chat': { maxTokens: 8192, temperature: 0.2 },
+  'deepseek-coder': { maxTokens: 8192, temperature: 0.2 },
+  'deepseek-reasoner': { maxTokens: 8192, temperature: 0.2 },
+  // Groq models
+  'llama-3.3-70b-versatile': { maxTokens: 8192, temperature: 0.2 },
+  'llama-3.1-8b-instant': { maxTokens: 8192, temperature: 0.2 },
+  'mixtral-8x7b-32768': { maxTokens: 8192, temperature: 0.2 },
+  'gemma2-9b-it': { maxTokens: 8192, temperature: 0.2 },
 };
 
 function getModelConfig(model: string): { maxTokens: number; temperature: number } {
@@ -189,8 +200,15 @@ export async function POST(request: NextRequest) {
     const currentFiles = body.currentFiles ?? {};
     const images = body.images ?? [];
 
-    const provider: Provider = body.provider === 'anthropic' ? 'anthropic' : 'openai';
-    const model = (body.model ?? '').trim() || (provider === 'openai' ? DEFAULT_OPENAI_MODEL : DEFAULT_ANTHROPIC_MODEL);
+    const validProviders: Provider[] = ['openai', 'anthropic', 'deepseek', 'groq'];
+    const provider: Provider = validProviders.includes(body.provider as Provider) ? (body.provider as Provider) : 'openai';
+    const defaultModels: Record<Provider, string> = {
+      openai: DEFAULT_OPENAI_MODEL,
+      anthropic: DEFAULT_ANTHROPIC_MODEL,
+      deepseek: DEFAULT_DEEPSEEK_MODEL,
+      groq: DEFAULT_GROQ_MODEL,
+    };
+    const model = (body.model ?? '').trim() || defaultModels[provider];
     const modelConfig = getModelConfig(model);
 
     // Usage caps via Supabase DB
@@ -236,11 +254,22 @@ export async function POST(request: NextRequest) {
 
     // Call provider using server keys
     let responseText = '';
-    if (provider === 'openai') {
-      const apiKey = process.env.OPENAI_API_KEY;
-      if (!apiKey) return jsonError('OPENAI_API_KEY not configured on server', 500);
+    
+    if (provider === 'openai' || provider === 'deepseek' || provider === 'groq') {
+      const apiKeyEnvMap: Record<string, string | undefined> = {
+        openai: process.env.OPENAI_API_KEY,
+        deepseek: process.env.DEEPSEEK_API_KEY,
+        groq: process.env.GROQ_API_KEY,
+      };
+      const endpointMap: Record<string, string> = {
+        openai: 'https://api.openai.com/v1/chat/completions',
+        deepseek: 'https://api.deepseek.com/v1/chat/completions',
+        groq: 'https://api.groq.com/openai/v1/chat/completions',
+      };
+      
+      const apiKey = apiKeyEnvMap[provider];
+      if (!apiKey) return jsonError(`${provider.toUpperCase()}_API_KEY not configured on server`, 500);
 
-      // Build user content with images if present
       let userContent: any = userPrompt;
       if (images.length > 0) {
         userContent = [
@@ -252,7 +281,7 @@ export async function POST(request: NextRequest) {
         ];
       }
 
-      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      const res = await fetch(endpointMap[provider], {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -265,22 +294,21 @@ export async function POST(request: NextRequest) {
             { role: 'user', content: userContent },
           ],
           temperature: modelConfig.temperature,
-          max_completion_tokens: modelConfig.maxTokens,
+          max_tokens: modelConfig.maxTokens,
         }),
       });
 
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const msg = json?.error?.message || `OpenAI request failed (${res.status})`;
+        const msg = json?.error?.message || `${provider} request failed (${res.status})`;
         return jsonError(msg, res.status);
       }
 
       responseText = json?.choices?.[0]?.message?.content ?? '';
-    } else {
+    } else if (provider === 'anthropic') {
       const apiKey = process.env.ANTHROPIC_API_KEY;
       if (!apiKey) return jsonError('ANTHROPIC_API_KEY not configured on server', 500);
 
-      // Build user content with images if present (Anthropic format)
       let userContent: any = userPrompt;
       if (images.length > 0) {
         userContent = [

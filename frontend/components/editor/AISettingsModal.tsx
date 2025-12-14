@@ -27,6 +27,13 @@ const MODEL_RATINGS: Record<string, { capability: number; speed: number; cost: '
   'claude-sonnet-4-20250514': { capability: 4, speed: 4, cost: 'medium', costEstimate: '~$0.02' },
   'claude-3-5-sonnet-latest': { capability: 4, speed: 4, cost: 'medium', costEstimate: '~$0.015' },
   'claude-3-5-haiku-latest': { capability: 3, speed: 5, cost: 'low', costEstimate: '~$0.002' },
+  'deepseek-chat': { capability: 4, speed: 4, cost: 'low', costEstimate: '~$0.002' },
+  'deepseek-coder': { capability: 4, speed: 4, cost: 'low', costEstimate: '~$0.002' },
+  'deepseek-reasoner': { capability: 5, speed: 3, cost: 'low', costEstimate: '~$0.005' },
+  'llama-3.3-70b-versatile': { capability: 4, speed: 5, cost: 'low', costEstimate: '~$0.003' },
+  'llama-3.1-8b-instant': { capability: 3, speed: 5, cost: 'low', costEstimate: '~$0.0005' },
+  'mixtral-8x7b-32768': { capability: 4, speed: 5, cost: 'low', costEstimate: '~$0.002' },
+  'gemma2-9b-it': { capability: 3, speed: 5, cost: 'low', costEstimate: '~$0.001' },
 };
 
 const COST_COLORS = {
@@ -63,54 +70,85 @@ function RatingDots({ value, max = 5, color = 'purple' }: { value: number; max?:
   );
 }
 
-function SetupGuide({ provider, expanded, onToggle }: { provider: 'openai' | 'anthropic'; expanded: boolean; onToggle: () => void }) {
-  const isOpenAI = provider === 'openai';
-  
-  const steps = isOpenAI ? [
-    { text: 'Go to platform.openai.com/api-keys', link: 'https://platform.openai.com/api-keys' },
-    { text: 'Click "Create new secret key"' },
-    { text: 'Give it a name (e.g., "FinalCode")' },
-    { text: 'Copy the key and paste below' },
-  ] : [
-    { text: 'Go to console.anthropic.com/settings/keys', link: 'https://console.anthropic.com/settings/keys' },
-    { text: 'Click "Create Key"' },
-    { text: 'Name it (e.g., "FinalCode")' },
-    { text: 'Copy the key and paste below' },
-  ];
+function SetupGuide({ provider, expanded, onToggle }: { provider: 'openai' | 'anthropic' | 'deepseek' | 'groq'; expanded: boolean; onToggle: () => void }) {
+  const providerConfig: Record<string, { steps: { text: string; link?: string }[]; note: string; colorClass: string; bgClass: string; borderClass: string }> = {
+    openai: {
+      steps: [
+        { text: 'Go to platform.openai.com/api-keys', link: 'https://platform.openai.com/api-keys' },
+        { text: 'Click "Create new secret key"' },
+        { text: 'Give it a name (e.g., "FinalCode")' },
+        { text: 'Copy the key and paste below' },
+      ],
+      note: "You'll need at least $5 in API credits. Pay-as-you-go billing.",
+      colorClass: 'text-green-400 hover:text-green-300',
+      bgClass: 'bg-green-500/5 border-green-500/20',
+      borderClass: 'border-green-500/20 text-green-300/70',
+    },
+    anthropic: {
+      steps: [
+        { text: 'Go to console.anthropic.com/settings/keys', link: 'https://console.anthropic.com/settings/keys' },
+        { text: 'Click "Create Key"' },
+        { text: 'Name it (e.g., "FinalCode")' },
+        { text: 'Copy the key and paste below' },
+      ],
+      note: "Requires billing setup at console.anthropic.com",
+      colorClass: 'text-orange-400 hover:text-orange-300',
+      bgClass: 'bg-orange-500/5 border-orange-500/20',
+      borderClass: 'border-orange-500/20 text-orange-300/70',
+    },
+    deepseek: {
+      steps: [
+        { text: 'Go to platform.deepseek.com', link: 'https://platform.deepseek.com' },
+        { text: 'Sign up or log in to your account' },
+        { text: 'Go to API Keys section' },
+        { text: 'Create a new API key and copy it below' },
+      ],
+      note: "DeepSeek offers very low pricing. $5 credit gets you far.",
+      colorClass: 'text-blue-400 hover:text-blue-300',
+      bgClass: 'bg-blue-500/5 border-blue-500/20',
+      borderClass: 'border-blue-500/20 text-blue-300/70',
+    },
+    groq: {
+      steps: [
+        { text: 'Go to console.groq.com', link: 'https://console.groq.com' },
+        { text: 'Sign up or log in to your account' },
+        { text: 'Navigate to API Keys' },
+        { text: 'Create a new API key and copy it below' },
+      ],
+      note: "Groq offers a generous free tier with rate limits.",
+      colorClass: 'text-purple-400 hover:text-purple-300',
+      bgClass: 'bg-purple-500/5 border-purple-500/20',
+      borderClass: 'border-purple-500/20 text-purple-300/70',
+    },
+  };
 
-  const note = isOpenAI 
-    ? "You'll need at least $5 in API credits. Pay-as-you-go billing."
-    : "Requires billing setup at console.anthropic.com";
-
-  const accentColor = isOpenAI ? 'green' : 'orange';
+  const config = providerConfig[provider];
+  const stepBgClass = provider === 'openai' ? 'bg-green-500/20 text-green-400' 
+    : provider === 'anthropic' ? 'bg-orange-500/20 text-orange-400'
+    : provider === 'deepseek' ? 'bg-blue-500/20 text-blue-400'
+    : 'bg-purple-500/20 text-purple-400';
+  const linkClass = provider === 'openai' ? 'text-green-400' 
+    : provider === 'anthropic' ? 'text-orange-400'
+    : provider === 'deepseek' ? 'text-blue-400'
+    : 'text-purple-400';
 
   return (
     <div className="mt-3">
       <button
         type="button"
         onClick={onToggle}
-        className={`flex items-center gap-2 text-xs font-medium transition-colors ${
-          isOpenAI ? 'text-green-400 hover:text-green-300' : 'text-orange-400 hover:text-orange-300'
-        }`}
+        className={`flex items-center gap-2 text-xs font-medium transition-colors ${config.colorClass}`}
       >
         {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
         How to get your API key
       </button>
       
       {expanded && (
-        <div className={`mt-3 p-4 rounded-lg border ${
-          isOpenAI 
-            ? 'bg-green-500/5 border-green-500/20' 
-            : 'bg-orange-500/5 border-orange-500/20'
-        }`}>
+        <div className={`mt-3 p-4 rounded-lg border ${config.bgClass}`}>
           <ol className="space-y-2.5">
-            {steps.map((step, i) => (
+            {config.steps.map((step, i) => (
               <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
-                <span className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
-                  isOpenAI 
-                    ? 'bg-green-500/20 text-green-400' 
-                    : 'bg-orange-500/20 text-orange-400'
-                }`}>
+                <span className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${stepBgClass}`}>
                   {i + 1}
                 </span>
                 {step.link ? (
@@ -118,9 +156,7 @@ function SetupGuide({ provider, expanded, onToggle }: { provider: 'openai' | 'an
                     href={step.link} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className={`inline-flex items-center gap-1 hover:underline ${
-                      isOpenAI ? 'text-green-400' : 'text-orange-400'
-                    }`}
+                    className={`inline-flex items-center gap-1 hover:underline ${linkClass}`}
                   >
                     {step.text}
                     <ExternalLink className="w-3 h-3" />
@@ -131,11 +167,9 @@ function SetupGuide({ provider, expanded, onToggle }: { provider: 'openai' | 'an
               </li>
             ))}
           </ol>
-          <div className={`mt-3 pt-3 border-t flex items-start gap-2 text-xs ${
-            isOpenAI ? 'border-green-500/20 text-green-300/70' : 'border-orange-500/20 text-orange-300/70'
-          }`}>
+          <div className={`mt-3 pt-3 border-t flex items-start gap-2 text-xs ${config.borderClass}`}>
             <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-            <span>{note}</span>
+            <span>{config.note}</span>
           </div>
         </div>
       )}
@@ -143,7 +177,7 @@ function SetupGuide({ provider, expanded, onToggle }: { provider: 'openai' | 'an
   );
 }
 
-function isValidKeyFormat(provider: 'openai' | 'anthropic', key: string): { valid: boolean; message: string } {
+function isValidKeyFormat(provider: 'openai' | 'anthropic' | 'deepseek' | 'groq', key: string): { valid: boolean; message: string } {
   if (!key) return { valid: false, message: '' };
   
   if (provider === 'openai') {
@@ -160,6 +194,20 @@ function isValidKeyFormat(provider: 'openai' | 'anthropic', key: string): { vali
     return { valid: false, message: 'Should start with "sk-ant-"' };
   }
   
+  if (provider === 'deepseek') {
+    if (key.startsWith('sk-') && key.length > 20) {
+      return { valid: true, message: 'Format looks correct' };
+    }
+    return { valid: false, message: 'Should start with "sk-"' };
+  }
+  
+  if (provider === 'groq') {
+    if (key.startsWith('gsk_') && key.length > 20) {
+      return { valid: true, message: 'Format looks correct' };
+    }
+    return { valid: false, message: 'Should start with "gsk_"' };
+  }
+  
   return { valid: false, message: '' };
 }
 
@@ -167,8 +215,12 @@ export default function AISettingsModal({ open, onClose, onSaved }: Props) {
   const [settings, setSettings] = useState<AISettings>(DEFAULT_AI_SETTINGS);
   const [showOpenAIKey, setShowOpenAIKey] = useState(false);
   const [showAnthropicKey, setShowAnthropicKey] = useState(false);
+  const [showDeepSeekKey, setShowDeepSeekKey] = useState(false);
+  const [showGroqKey, setShowGroqKey] = useState(false);
   const [openAIGuideExpanded, setOpenAIGuideExpanded] = useState(false);
   const [anthropicGuideExpanded, setAnthropicGuideExpanded] = useState(false);
+  const [deepseekGuideExpanded, setDeepseekGuideExpanded] = useState(false);
+  const [groqGuideExpanded, setGroqGuideExpanded] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -191,8 +243,14 @@ export default function AISettingsModal({ open, onClose, onSaved }: Props) {
     onClose();
   };
 
-  const getKeyFormatUI = (provider: 'openai' | 'anthropic') => {
-    const key = provider === 'openai' ? settings.openaiApiKey : settings.anthropicApiKey;
+  const getKeyFormatUI = (provider: 'openai' | 'anthropic' | 'deepseek' | 'groq') => {
+    const keyMap: Record<string, string> = {
+      openai: settings.openaiApiKey,
+      anthropic: settings.anthropicApiKey,
+      deepseek: settings.deepseekApiKey,
+      groq: settings.groqApiKey,
+    };
+    const key = keyMap[provider] || '';
     const validation = isValidKeyFormat(provider, key);
     
     if (!key) return null;
@@ -336,6 +394,82 @@ export default function AISettingsModal({ open, onClose, onSaved }: Props) {
                   </span>
                 </div>
               </button>
+
+              {/* DeepSeek Card */}
+              <button
+                type="button"
+                onClick={() => handleProviderChange('deepseek')}
+                className={`relative rounded-2xl border-2 p-5 text-left transition-all group ${
+                  settings.provider === 'deepseek'
+                    ? 'border-blue-500 bg-gradient-to-br from-blue-500/10 to-blue-600/5 shadow-lg shadow-blue-500/10'
+                    : 'border-gray-700 bg-[#161b22] hover:border-gray-600 hover:bg-[#1c2128]'
+                }`}
+                data-testid="ai-settings-provider-deepseek"
+              >
+                {settings.provider === 'deepseek' && (
+                  <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center">
+                    <Check className="w-4 h-4 text-white" />
+                  </div>
+                )}
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-xl font-bold shadow-lg">
+                    D
+                  </div>
+                  <div>
+                    <div className="font-bold text-white text-lg">DeepSeek</div>
+                    <div className="text-sm text-blue-400">DeepSeek Models</div>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-400">
+                  Near GPT-4 quality at 10x lower cost
+                </p>
+                <div className="mt-3 flex items-center gap-4 text-xs text-gray-500">
+                  <span className="flex items-center gap-1">
+                    <Star className="w-3 h-3" /> DeepSeek-V3
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Gauge className="w-3 h-3" /> 3 models
+                  </span>
+                </div>
+              </button>
+
+              {/* Groq Card */}
+              <button
+                type="button"
+                onClick={() => handleProviderChange('groq')}
+                className={`relative rounded-2xl border-2 p-5 text-left transition-all group ${
+                  settings.provider === 'groq'
+                    ? 'border-purple-500 bg-gradient-to-br from-purple-500/10 to-purple-600/5 shadow-lg shadow-purple-500/10'
+                    : 'border-gray-700 bg-[#161b22] hover:border-gray-600 hover:bg-[#1c2128]'
+                }`}
+                data-testid="ai-settings-provider-groq"
+              >
+                {settings.provider === 'groq' && (
+                  <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center">
+                    <Check className="w-4 h-4 text-white" />
+                  </div>
+                )}
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white text-xl font-bold shadow-lg">
+                    G
+                  </div>
+                  <div>
+                    <div className="font-bold text-white text-lg">Groq</div>
+                    <div className="text-sm text-purple-400">Open-Source Models</div>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-400">
+                  Ultra-fast inference with open-source models
+                </p>
+                <div className="mt-3 flex items-center gap-4 text-xs text-gray-500">
+                  <span className="flex items-center gap-1">
+                    <Star className="w-3 h-3" /> Llama 3.3 70B
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Gauge className="w-3 h-3" /> 4 models
+                  </span>
+                </div>
+              </button>
             </div>
           </div>
 
@@ -349,7 +483,13 @@ export default function AISettingsModal({ open, onClose, onSaved }: Props) {
               {modelOptions.map((m) => {
                 const rating = MODEL_RATINGS[m.value] || { capability: 3, speed: 3, cost: 'medium', costEstimate: '~$0.01' };
                 const isSelected = settings.model === m.value;
-                const providerColor = settings.provider === 'anthropic' ? 'orange' : 'green';
+                const providerColors: Record<string, { border: string; bg: string }> = {
+                  anthropic: { border: '#f97316', bg: 'rgba(249, 115, 22, 0.1)' },
+                  openai: { border: '#22c55e', bg: 'rgba(34, 197, 94, 0.1)' },
+                  deepseek: { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },
+                  groq: { border: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' },
+                };
+                const colors = providerColors[settings.provider] || providerColors.openai;
                 
                 return (
                   <button
@@ -358,12 +498,12 @@ export default function AISettingsModal({ open, onClose, onSaved }: Props) {
                     onClick={() => setSettings((s) => ({ ...s, model: m.value }))}
                     className={`relative rounded-xl border-2 px-5 py-4 text-left transition-all ${
                       isSelected
-                        ? `border-${providerColor}-500 bg-${providerColor}-500/10`
+                        ? ''
                         : 'border-gray-700 bg-[#161b22] hover:border-gray-600 hover:bg-[#1c2128]'
                     }`}
                     style={{
-                      borderColor: isSelected ? (settings.provider === 'anthropic' ? '#f97316' : '#22c55e') : undefined,
-                      background: isSelected ? (settings.provider === 'anthropic' ? 'rgba(249, 115, 22, 0.1)' : 'rgba(34, 197, 94, 0.1)') : undefined,
+                      borderColor: isSelected ? colors.border : undefined,
+                      background: isSelected ? colors.bg : undefined,
                     }}
                     data-testid={`ai-settings-model-${m.value}`}
                   >
@@ -371,11 +511,11 @@ export default function AISettingsModal({ open, onClose, onSaved }: Props) {
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-1">
                           <span className="font-semibold text-white">{m.label}</span>
-                          {m.value.includes('opus') || m.value.includes('5.2') ? (
+                          {m.value.includes('opus') || m.value.includes('5.2') || m.value.includes('reasoner') ? (
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-purple-500 to-pink-500 text-white">
                               FLAGSHIP
                             </span>
-                          ) : m.value.includes('haiku') || m.value.includes('mini') ? (
+                          ) : m.value.includes('haiku') || m.value.includes('mini') || m.value.includes('8b') || m.value.includes('instant') ? (
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
                               FAST
                             </span>
@@ -408,7 +548,7 @@ export default function AISettingsModal({ open, onClose, onSaved }: Props) {
                       {isSelected && (
                         <div 
                           className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
-                          style={{ backgroundColor: settings.provider === 'anthropic' ? '#f97316' : '#22c55e' }}
+                          style={{ backgroundColor: colors.border }}
                         >
                           <Check className="w-4 h-4 text-white" />
                         </div>
@@ -551,6 +691,82 @@ export default function AISettingsModal({ open, onClose, onSaved }: Props) {
                     provider="anthropic" 
                     expanded={anthropicGuideExpanded} 
                     onToggle={() => setAnthropicGuideExpanded(!anthropicGuideExpanded)} 
+                  />
+                </div>
+
+                {/* DeepSeek API Key */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm text-gray-300 flex items-center gap-2">
+                      <div className="w-5 h-5 rounded bg-blue-500/20 flex items-center justify-center text-blue-400 text-xs font-bold">D</div>
+                      DeepSeek API Key
+                      {settings.deepseekApiKey && isValidKeyFormat('deepseek', settings.deepseekApiKey).valid && (
+                        <CheckCircle2 className="w-4 h-4 text-blue-400" />
+                      )}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowDeepSeekKey(!showDeepSeekKey)}
+                      className="text-xs text-gray-400 hover:text-white"
+                    >
+                      {showDeepSeekKey ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
+                  <input
+                    type={showDeepSeekKey ? 'text' : 'password'}
+                    className={`w-full rounded-lg bg-[#0d1117] border px-3 py-2.5 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 font-mono text-sm ${
+                      settings.deepseekApiKey && isValidKeyFormat('deepseek', settings.deepseekApiKey).valid
+                        ? 'border-blue-500 focus:ring-blue-500'
+                        : 'border-gray-700 focus:ring-blue-500'
+                    } focus:border-transparent`}
+                    placeholder="sk-..."
+                    value={settings.deepseekApiKey}
+                    onChange={(e) => setSettings((s) => ({ ...s, deepseekApiKey: e.target.value }))}
+                    data-testid="ai-settings-deepseek-api-key-input"
+                  />
+                  {getKeyFormatUI('deepseek')}
+                  <SetupGuide 
+                    provider="deepseek" 
+                    expanded={deepseekGuideExpanded} 
+                    onToggle={() => setDeepseekGuideExpanded(!deepseekGuideExpanded)} 
+                  />
+                </div>
+
+                {/* Groq API Key */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm text-gray-300 flex items-center gap-2">
+                      <div className="w-5 h-5 rounded bg-purple-500/20 flex items-center justify-center text-purple-400 text-xs font-bold">G</div>
+                      Groq API Key
+                      {settings.groqApiKey && isValidKeyFormat('groq', settings.groqApiKey).valid && (
+                        <CheckCircle2 className="w-4 h-4 text-purple-400" />
+                      )}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowGroqKey(!showGroqKey)}
+                      className="text-xs text-gray-400 hover:text-white"
+                    >
+                      {showGroqKey ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
+                  <input
+                    type={showGroqKey ? 'text' : 'password'}
+                    className={`w-full rounded-lg bg-[#0d1117] border px-3 py-2.5 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 font-mono text-sm ${
+                      settings.groqApiKey && isValidKeyFormat('groq', settings.groqApiKey).valid
+                        ? 'border-purple-500 focus:ring-purple-500'
+                        : 'border-gray-700 focus:ring-purple-500'
+                    } focus:border-transparent`}
+                    placeholder="gsk_..."
+                    value={settings.groqApiKey}
+                    onChange={(e) => setSettings((s) => ({ ...s, groqApiKey: e.target.value }))}
+                    data-testid="ai-settings-groq-api-key-input"
+                  />
+                  {getKeyFormatUI('groq')}
+                  <SetupGuide 
+                    provider="groq" 
+                    expanded={groqGuideExpanded} 
+                    onToggle={() => setGroqGuideExpanded(!groqGuideExpanded)} 
                   />
                 </div>
               </div>

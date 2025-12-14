@@ -10,7 +10,7 @@ const MAX_NUDGES = 2;
 const MAX_TOKENS = 4096;
 const RATE_LIMIT_RETRY_DELAY = 5000;
 
-type Provider = 'openai' | 'anthropic';
+type Provider = 'openai' | 'anthropic' | 'deepseek' | 'groq';
 
 interface ToolCallEvent {
   type: 'tool_call';
@@ -46,15 +46,17 @@ function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
 }
 
-async function callOpenAI(
+async function callOpenAICompatible(
+  endpoint: string,
   apiKey: string,
   model: string,
   messages: any[],
   tools: any[],
   forceTools: boolean = false,
-  retryCount: number = 0
+  retryCount: number = 0,
+  providerName: string = 'OpenAI'
 ): Promise<{ content: string | null; tool_calls: any[] | null; error?: string }> {
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+  const res = await fetch(endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -65,19 +67,19 @@ async function callOpenAI(
       messages,
       tools,
       tool_choice: forceTools ? 'required' : 'auto',
-      max_completion_tokens: MAX_TOKENS,
+      max_tokens: MAX_TOKENS,
       temperature: 0.1,
     }),
   });
 
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const errorMsg = json?.error?.message || `OpenAI error (${res.status})`;
+    const errorMsg = json?.error?.message || `${providerName} error (${res.status})`;
     
     if (res.status === 429 && retryCount < 2) {
       const waitTime = RATE_LIMIT_RETRY_DELAY * (retryCount + 1);
       await new Promise(resolve => setTimeout(resolve, waitTime));
-      return callOpenAI(apiKey, model, messages, tools, forceTools, retryCount + 1);
+      return callOpenAICompatible(endpoint, apiKey, model, messages, tools, forceTools, retryCount + 1, providerName);
     }
     
     return { content: null, tool_calls: null, error: errorMsg };
@@ -88,6 +90,39 @@ async function callOpenAI(
     content: choice?.message?.content ?? null,
     tool_calls: choice?.message?.tool_calls ?? null,
   };
+}
+
+async function callOpenAI(
+  apiKey: string,
+  model: string,
+  messages: any[],
+  tools: any[],
+  forceTools: boolean = false,
+  retryCount: number = 0
+): Promise<{ content: string | null; tool_calls: any[] | null; error?: string }> {
+  return callOpenAICompatible('https://api.openai.com/v1/chat/completions', apiKey, model, messages, tools, forceTools, retryCount, 'OpenAI');
+}
+
+async function callDeepSeek(
+  apiKey: string,
+  model: string,
+  messages: any[],
+  tools: any[],
+  forceTools: boolean = false,
+  retryCount: number = 0
+): Promise<{ content: string | null; tool_calls: any[] | null; error?: string }> {
+  return callOpenAICompatible('https://api.deepseek.com/v1/chat/completions', apiKey, model, messages, tools, forceTools, retryCount, 'DeepSeek');
+}
+
+async function callGroq(
+  apiKey: string,
+  model: string,
+  messages: any[],
+  tools: any[],
+  forceTools: boolean = false,
+  retryCount: number = 0
+): Promise<{ content: string | null; tool_calls: any[] | null; error?: string }> {
+  return callOpenAICompatible('https://api.groq.com/openai/v1/chat/completions', apiKey, model, messages, tools, forceTools, retryCount, 'Groq');
 }
 
 async function callAnthropic(
@@ -163,8 +198,15 @@ export async function POST(request: NextRequest) {
     if (!message) return jsonError('Missing message');
 
     let files: FileMap = body.currentFiles ?? {};
-    const provider: Provider = body.provider === 'anthropic' ? 'anthropic' : 'openai';
-    const model = (body.model ?? '').trim() || (provider === 'openai' ? 'gpt-4o' : 'claude-sonnet-4-20250514');
+    const validProviders: Provider[] = ['openai', 'anthropic', 'deepseek', 'groq'];
+    const provider: Provider = validProviders.includes(body.provider as Provider) ? (body.provider as Provider) : 'openai';
+    const defaultModels: Record<Provider, string> = {
+      openai: 'gpt-4o',
+      anthropic: 'claude-sonnet-4-20250514',
+      deepseek: 'deepseek-chat',
+      groq: 'llama-3.3-70b-versatile',
+    };
+    const model = (body.model ?? '').trim() || defaultModels[provider];
 
     const admin = createAdminClient();
     if (!admin) return jsonError('Server is missing SUPABASE_SERVICE_ROLE_KEY', 500);
@@ -191,10 +233,18 @@ export async function POST(request: NextRequest) {
       console.warn('Usage tracking not available');
     }
 
-    const apiKey = provider === 'openai' ? process.env.OPENAI_API_KEY : process.env.ANTHROPIC_API_KEY;
+    const apiKeyEnvMap: Record<Provider, string | undefined> = {
+      openai: process.env.OPENAI_API_KEY,
+      anthropic: process.env.ANTHROPIC_API_KEY,
+      deepseek: process.env.DEEPSEEK_API_KEY,
+      groq: process.env.GROQ_API_KEY,
+    };
+    const apiKey = apiKeyEnvMap[provider];
     if (!apiKey) return jsonError(`${provider.toUpperCase()}_API_KEY not configured`, 500);
 
-    const tools = provider === 'openai' ? getOpenAITools() : getAnthropicTools();
+    const tools = (provider === 'openai' || provider === 'deepseek' || provider === 'groq') 
+      ? getOpenAITools() 
+      : getAnthropicTools();
     const events: StreamEvent[] = [];
     let isComplete = false;
     let completeSummary: string | undefined;
@@ -207,8 +257,10 @@ export async function POST(request: NextRequest) {
 
     const initialUserMessage = `${message}${filesContext}`;
 
+    const isOpenAICompatible = provider === 'openai' || provider === 'deepseek' || provider === 'groq';
+    
     let messages: any[];
-    if (provider === 'openai') {
+    if (isOpenAICompatible) {
       messages = [
         { role: 'system', content: AGENT_SYSTEM_PROMPT },
         { role: 'user', content: initialUserMessage },
@@ -225,12 +277,25 @@ export async function POST(request: NextRequest) {
         : 'No files yet';
     };
 
+    const callProvider = async (forceTools: boolean) => {
+      switch (provider) {
+        case 'openai':
+          return callOpenAI(apiKey, model, messages, tools, forceTools);
+        case 'deepseek':
+          return callDeepSeek(apiKey, model, messages, tools, forceTools);
+        case 'groq':
+          return callGroq(apiKey, model, messages, tools, forceTools);
+        case 'anthropic':
+          return callAnthropic(apiKey, model, messages, tools);
+        default:
+          return callOpenAI(apiKey, model, messages, tools, forceTools);
+      }
+    };
+
     for (let iteration = 0; iteration < MAX_ITERATIONS && !isComplete; iteration++) {
-      const forceTools = nudgeCount > 0 && provider === 'openai';
+      const forceTools = nudgeCount > 0 && isOpenAICompatible;
       
-      const response = provider === 'openai'
-        ? await callOpenAI(apiKey, model, messages, tools, forceTools)
-        : await callAnthropic(apiKey, model, messages, tools);
+      const response = await callProvider(forceTools);
 
       if (response.error) {
         events.push({ type: 'error', message: response.error });
@@ -245,7 +310,7 @@ export async function POST(request: NextRequest) {
         if (nudgeCount < MAX_NUDGES && !hasWrittenFiles) {
           nudgeCount++;
           
-          if (provider === 'openai') {
+          if (isOpenAICompatible) {
             messages.push({ role: 'assistant', content: response.content });
             messages.push({ 
               role: 'user', 
@@ -312,7 +377,7 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      if (provider === 'openai') {
+      if (isOpenAICompatible) {
         messages.push({
           role: 'assistant',
           content: response.content,
