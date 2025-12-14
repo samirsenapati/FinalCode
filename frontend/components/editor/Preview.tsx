@@ -11,11 +11,18 @@ import {
   ChevronRight,
   Globe,
   Lock,
+  Loader2,
+  AlertCircle,
+  CheckCircle,
 } from 'lucide-react';
 
 interface PreviewProps {
   files: Record<string, string>;
   serverUrl?: string | null;
+  isLoading?: boolean;
+  error?: string | null;
+  status?: 'idle' | 'starting' | 'installing' | 'running' | 'error' | 'ready';
+  onRetry?: () => void;
 }
 
 type ViewportSize = 'desktop' | 'tablet' | 'mobile';
@@ -26,10 +33,12 @@ const VIEWPORT_SIZES: Record<ViewportSize, { width: string; icon: typeof Monitor
   mobile: { width: '375px', icon: Smartphone, label: 'Mobile' },
 };
 
-export default function Preview({ files, serverUrl }: PreviewProps) {
+export default function Preview({ files, serverUrl, isLoading, error, status, onRetry }: PreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [viewport, setViewport] = useState<ViewportSize>('desktop');
   const [key, setKey] = useState(0);
+  const [iframeError, setIframeError] = useState<string | null>(null);
+  const [iframeLoaded, setIframeLoaded] = useState(false);
 
   // Check if this is a fullstack project with server
   const isFullstackProject = () => {
@@ -340,7 +349,50 @@ export default function Preview({ files, serverUrl }: PreviewProps) {
       </div>
 
       {/* Preview Frame Container */}
-      <div className="flex-1 flex items-start justify-center bg-[#161b22] p-4 overflow-auto">
+      <div className="flex-1 flex items-start justify-center bg-[#161b22] p-4 overflow-auto relative">
+        {/* Loading Overlay */}
+        {isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-[#161b22]/90 z-10">
+            <div className="text-center">
+              <Loader2 className="w-8 h-8 text-blue-500 animate-spin mx-auto mb-3" />
+              <p className="text-sm text-[#8b949e]">
+                {status === 'installing' && 'Installing dependencies...'}
+                {status === 'starting' && 'Starting server...'}
+                {status === 'running' && 'Server starting up...'}
+                {(!status || status === 'idle') && 'Loading preview...'}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Error Overlay */}
+        {error && !isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-[#161b22]/95 z-10">
+            <div className="text-center max-w-md px-6">
+              <AlertCircle className="w-10 h-10 text-red-500 mx-auto mb-3" />
+              <h3 className="text-lg font-semibold text-white mb-2">Preview Error</h3>
+              <p className="text-sm text-[#8b949e] mb-4 break-words">{error}</p>
+              {onRetry && (
+                <button
+                  onClick={onRetry}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors inline-flex items-center gap-2"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Retry
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Status indicator */}
+        {status === 'ready' && !error && (
+          <div className="absolute top-6 right-6 z-10 flex items-center gap-2 bg-green-500/20 text-green-400 px-3 py-1.5 rounded-full text-xs font-medium">
+            <CheckCircle className="w-3.5 h-3.5" />
+            Server Ready
+          </div>
+        )}
+
         <div
           className="bg-white rounded-lg overflow-hidden shadow-2xl transition-all duration-300 h-full"
           style={{
@@ -355,6 +407,8 @@ export default function Preview({ files, serverUrl }: PreviewProps) {
               title="Server Preview"
               className="w-full h-full border-0"
               sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups"
+              onLoad={() => setIframeLoaded(true)}
+              onError={() => setIframeError('Failed to load preview')}
             />
           ) : isFullstackProject() ? (
             <iframe
@@ -371,6 +425,8 @@ export default function Preview({ files, serverUrl }: PreviewProps) {
               title="Preview"
               className="w-full h-full border-0"
               sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups"
+              onLoad={() => setIframeLoaded(true)}
+              onError={() => setIframeError('Failed to load preview')}
             />
           )}
         </div>

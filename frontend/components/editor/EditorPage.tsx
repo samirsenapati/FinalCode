@@ -177,6 +177,8 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
   const [isRunning, setIsRunning] = useState(false);
   const [serverProcess, setServerProcess] = useState<ServerProcess | null>(null);
   const [serverUrl, setServerUrl] = useState<string | null>(null);
+  const [serverStatus, setServerStatus] = useState<'idle' | 'starting' | 'installing' | 'running' | 'error' | 'ready'>('idle');
+  const [serverError, setServerError] = useState<string | null>(null);
 
   const { isIsolated } = useCrossOriginIsolation();
 
@@ -441,6 +443,8 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
   const handleRun = useCallback(async () => {
     try {
       setIsRunning(true);
+      setServerError(null);
+      setServerStatus('starting');
       setBottomPanelOpen(true);
       setBottomPanelTab('console');
 
@@ -451,6 +455,8 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
           '> Run is disabled, but Preview still works.',
           '',
         ]);
+        setServerStatus('error');
+        setServerError('WebContainers requires cross-origin isolation. Please check browser settings.');
         return;
       }
 
@@ -477,9 +483,12 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
           setTerminalOutput((prev) => [...prev, '> Installing dependencies...', '']);
           const installResult = await installDependencies({
             onOutput: (line) => setTerminalOutput((prev) => [...prev, line]),
+            onStatusChange: setServerStatus,
           });
           if (installResult.exitCode !== 0) {
             setTerminalOutput((prev) => [...prev, '> npm install failed', '']);
+            setServerStatus('error');
+            setServerError(installResult.error || 'npm install failed');
             return;
           }
           setTerminalOutput((prev) => [...prev, '> Dependencies installed successfully', '']);
@@ -494,7 +503,13 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
           onOutput: (line) => setTerminalOutput((prev) => [...prev, line]),
           onServerReady: (url) => {
             setServerUrl(url);
+            setServerStatus('ready');
             setTerminalOutput((prev) => [...prev, `> Server available at: ${url}`, '']);
+          },
+          onStatusChange: setServerStatus,
+          onError: (err) => {
+            setServerError(err);
+            setServerStatus('error');
           },
         });
         
@@ -979,7 +994,14 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
             {/* Preview Tab */}
             {rightPanelTab === 'preview' && (
               <div className="h-full bg-white">
-                <Preview files={files} serverUrl={serverUrl} />
+                <Preview 
+                  files={files} 
+                  serverUrl={serverUrl}
+                  isLoading={isRunning}
+                  error={serverError}
+                  status={serverStatus}
+                  onRetry={handleRun}
+                />
               </div>
             )}
 
