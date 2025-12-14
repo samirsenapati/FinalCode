@@ -1,9 +1,16 @@
 import type { AISettings } from '@/lib/ai/settings';
 
+export type ImageAttachment = {
+  name: string;
+  type: string;
+  dataUrl: string;
+};
+
 export async function callManagedAI(params: {
   settings: AISettings;
   message: string;
   currentFiles: Record<string, string>;
+  images?: ImageAttachment[];
 }): Promise<string> {
   const res = await fetch('/api/ai/chat', {
     method: 'POST',
@@ -13,6 +20,7 @@ export async function callManagedAI(params: {
       currentFiles: params.currentFiles,
       provider: params.settings.provider,
       model: params.settings.model,
+      images: params.images,
     }),
   });
 

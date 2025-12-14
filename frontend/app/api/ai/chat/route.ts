@@ -6,11 +6,18 @@ import { createAdminClient } from '@/lib/supabase/admin';
 
 type Provider = 'openai' | 'anthropic';
 
+type ImageAttachment = {
+  name: string;
+  type: string;
+  dataUrl: string;
+};
+
 type Body = {
   message: string;
   currentFiles: Record<string, string>;
   provider?: Provider;
   model?: string;
+  images?: ImageAttachment[];
 };
 
 // Default models - using latest and most capable
@@ -147,7 +154,17 @@ For simple frontend-only apps without a server, use the public/ paths:
    { "success": false, "error": "Error message" }
    \`\`\`
 
-Keep responses concise but complete. Focus on delivering working, production-ready code.`;
+Keep responses concise but complete. Focus on delivering working, production-ready code.
+
+## Response Summary:
+Always end your response with a helpful summary section formatted like this:
+
+---
+**What I did:** [Brief 1-2 sentence summary of what you created or changed]
+
+**How to verify:** [Simple steps to check it works - e.g., "Click the Run button and check that..."]
+
+**Next steps:** [1-2 suggestions for what the user could do next to improve or extend the app]`;
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
@@ -170,6 +187,7 @@ export async function POST(request: NextRequest) {
     if (!message) return jsonError('Missing message');
 
     const currentFiles = body.currentFiles ?? {};
+    const images = body.images ?? [];
 
     const provider: Provider = body.provider === 'anthropic' ? 'anthropic' : 'openai';
     const model = (body.model ?? '').trim() || (provider === 'openai' ? DEFAULT_OPENAI_MODEL : DEFAULT_ANTHROPIC_MODEL);
@@ -222,6 +240,18 @@ export async function POST(request: NextRequest) {
       const apiKey = process.env.OPENAI_API_KEY;
       if (!apiKey) return jsonError('OPENAI_API_KEY not configured on server', 500);
 
+      // Build user content with images if present
+      let userContent: any = userPrompt;
+      if (images.length > 0) {
+        userContent = [
+          ...images.map(img => ({
+            type: 'image_url',
+            image_url: { url: img.dataUrl }
+          })),
+          { type: 'text', text: userPrompt }
+        ];
+      }
+
       const res = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -232,7 +262,7 @@ export async function POST(request: NextRequest) {
           model,
           messages: [
             { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: userPrompt },
+            { role: 'user', content: userContent },
           ],
           temperature: modelConfig.temperature,
           max_completion_tokens: modelConfig.maxTokens,
@@ -250,6 +280,26 @@ export async function POST(request: NextRequest) {
       const apiKey = process.env.ANTHROPIC_API_KEY;
       if (!apiKey) return jsonError('ANTHROPIC_API_KEY not configured on server', 500);
 
+      // Build user content with images if present (Anthropic format)
+      let userContent: any = userPrompt;
+      if (images.length > 0) {
+        userContent = [
+          ...images.map(img => {
+            const base64Data = img.dataUrl.replace(/^data:image\/[a-z]+;base64,/, '');
+            const mediaType = img.type || 'image/png';
+            return {
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: mediaType,
+                data: base64Data
+              }
+            };
+          }),
+          { type: 'text', text: userPrompt }
+        ];
+      }
+
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
@@ -261,7 +311,7 @@ export async function POST(request: NextRequest) {
           model,
           max_tokens: modelConfig.maxTokens,
           system: SYSTEM_PROMPT,
-          messages: [{ role: 'user', content: userPrompt }],
+          messages: [{ role: 'user', content: userContent }],
           temperature: modelConfig.temperature,
         }),
       });

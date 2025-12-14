@@ -297,7 +297,11 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
 
       if (settings.mode === 'managed') {
         const { callManagedAI } = await import('@/lib/ai/managedClient');
-        responseText = await callManagedAI({ settings, message: userMessageText, currentFiles });
+        const imageAttachments = attachedFiles
+          .filter(f => f.type?.startsWith('image/') && f.dataUrl)
+          .map(f => ({ name: f.name, type: f.type!, dataUrl: f.dataUrl! }));
+        responseText = await callManagedAI({ settings, message: userMessageText, currentFiles, images: imageAttachments });
+        setAttachedFiles([]);
       } else {
         const { generateAIResponse } = await import('@/lib/ai/providers');
         responseText = await generateAIResponse({
