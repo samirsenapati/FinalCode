@@ -7,10 +7,12 @@ FinalCode is an AI-powered "vibe coding" platform that allows users to build web
 **Core Purpose:** Enable users to create, edit, preview, and deploy web applications using AI assistance, all within a browser-based IDE.
 
 **Key Capabilities:**
-- AI-powered code generation (supports OpenAI and Anthropic models)
+- AI-powered fullstack code generation (supports OpenAI and Anthropic models)
+- Generate frontend (HTML, CSS, JS) and backend (Node.js, Express, SQLite, JWT auth)
 - CodeMirror-based code editor with syntax highlighting
+- Nested file tree for fullstack project structures
 - Live preview with React/JSX support via Babel
-- In-browser JavaScript execution using WebContainers
+- In-browser JavaScript execution using WebContainers (npm install, server start)
 - Project persistence via Supabase
 - Subscription billing via Stripe
 - One-click deployment to Cloudflare Pages

@@ -39,31 +39,101 @@ function getModelConfig(model: string): { maxTokens: number; temperature: number
   };
 }
 
-const SYSTEM_PROMPT = `You are FinalCode AI, an expert web developer assistant that helps users build applications through natural language. You are powered by state-of-the-art AI models including Claude Opus 4.5 and GPT-5.2.
+const SYSTEM_PROMPT = `You are FinalCode AI, an expert fullstack web developer assistant that helps users build complete applications through natural language. You are powered by state-of-the-art AI models including Claude Opus 4.5 and GPT-5.2.
 
 Your role:
 1. Generate clean, working code based on user descriptions
-2. Explain what you're creating in a friendly way
-3. Always provide complete, runnable code
-4. Be creative and suggest improvements when appropriate
+2. Build both frontend AND backend code when needed
+3. Explain what you're creating in a friendly way
+4. Always provide complete, runnable code
+5. Be creative and suggest improvements when appropriate
 
-Guidelines:
+## Frontend Guidelines:
 - Generate HTML, CSS, and JavaScript code that works together
 - Use modern, clean design with good UX
-- Include helpful comments in the code
 - Make the code responsive and accessible
 - Use vanilla JavaScript (no frameworks) unless specifically asked
-- Always use semantic HTML
 - Use modern CSS features like Grid, Flexbox, and CSS Variables
 
-When generating code:
-- For complete apps, provide separate code blocks for HTML, CSS, and JavaScript
-- Label each code block clearly with the language (html, css, javascript)
-- Make sure the code is complete and can run immediately
-- Include any necessary error handling
-- Add smooth animations and transitions for better UX
+## Backend Guidelines (Node.js/Express):
+When the user asks for authentication, databases, APIs, or any server-side functionality:
+- Use Express.js for the web server
+- Use better-sqlite3 for database (SQLite)
+- Use bcryptjs for password hashing
+- Use jsonwebtoken for JWT authentication
+- Use helmet for security headers
+- Use cors for cross-origin requests
 
-Keep responses concise but complete. Focus on delivering working code quickly.`;
+## File Structure for Fullstack Apps:
+When generating a fullstack app, organize files like this:
+- server.js - Main Express server entry point
+- package.json - Dependencies and scripts
+- public/index.html - Frontend HTML
+- public/style.css - Frontend CSS
+- public/app.js - Frontend JavaScript
+- routes/auth.js - Authentication routes
+- routes/api.js - API routes
+- middleware/auth.js - JWT verification middleware
+- db/database.js - Database setup and queries
+
+## Code Block Format:
+IMPORTANT: For each file, use a code block with the FULL FILE PATH as the language identifier:
+\`\`\`server.js
+// server code here
+\`\`\`
+
+\`\`\`package.json
+{
+  "name": "my-app",
+  ...
+}
+\`\`\`
+
+\`\`\`public/index.html
+<!DOCTYPE html>
+...
+\`\`\`
+
+\`\`\`routes/auth.js
+// auth routes
+\`\`\`
+
+For simple frontend-only apps, you can still use:
+\`\`\`html
+...
+\`\`\`
+\`\`\`css
+...
+\`\`\`
+\`\`\`javascript
+...
+\`\`\`
+
+## Backend Patterns:
+1. **Express Server Setup**:
+   - Serve static files from /public folder
+   - Use JSON body parser
+   - Enable CORS
+   - Use helmet for security
+   - All API routes under /api/*
+
+2. **SQLite Database**:
+   - Create tables on server start if they don't exist
+   - Use prepared statements for queries
+   - Handle foreign keys properly
+
+3. **JWT Authentication**:
+   - Tokens expire in 7 days
+   - Include user id and email in payload
+   - Verify from Authorization header (Bearer token)
+
+4. **API Response Format**:
+   \`\`\`json
+   { "success": true, "data": { ... } }
+   { "success": false, "error": "Error message" }
+   \`\`\`
+
+Keep responses concise but complete. Focus on delivering working, production-ready code.`;
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
@@ -215,19 +285,44 @@ export async function POST(request: NextRequest) {
       // ignore
     }
 
-    // Extract basic files
+    // Extract files from code blocks
     const extractedFiles: Record<string, string> = {};
-    const htmlMatch = responseText.match(/```html\n([\s\S]*?)```/);
-    const cssMatch = responseText.match(/```css\n([\s\S]*?)```/);
-    const jsMatch = responseText.match(/```(?:javascript|js)\n([\s\S]*?)```/);
+    
+    // Match all code blocks with their language/path identifiers
+    const codeBlockRegex = /```([^\n]+)\n([\s\S]*?)```/g;
+    let match;
+    
+    while ((match = codeBlockRegex.exec(responseText)) !== null) {
+      const identifier = match[1].trim();
+      const content = match[2].trim();
+      
+      // Map language identifiers to file paths
+      if (identifier === 'html') {
+        extractedFiles['index.html'] = content;
+      } else if (identifier === 'css') {
+        extractedFiles['style.css'] = content;
+      } else if (identifier === 'javascript' || identifier === 'js') {
+        extractedFiles['script.js'] = content;
+      } else if (identifier === 'json' && content.includes('"name"') && content.includes('"dependencies"')) {
+        // Likely package.json
+        extractedFiles['package.json'] = content;
+      } else if (identifier.includes('.') || identifier.includes('/')) {
+        // This is a file path (e.g., "server.js", "routes/auth.js", "public/index.html")
+        extractedFiles[identifier] = content;
+      }
+    }
 
-    if (htmlMatch) extractedFiles['index.html'] = htmlMatch[1].trim();
-    if (cssMatch) extractedFiles['style.css'] = cssMatch[1].trim();
-    if (jsMatch) extractedFiles['script.js'] = jsMatch[1].trim();
+    // Detect if this is a fullstack project
+    const isFullstack = Boolean(
+      extractedFiles['server.js'] || 
+      extractedFiles['package.json'] ||
+      Object.keys(extractedFiles).some(f => f.startsWith('routes/') || f.startsWith('middleware/'))
+    );
 
     return NextResponse.json({
       response: responseText,
       files: Object.keys(extractedFiles).length ? extractedFiles : {},
+      isFullstack,
     });
   } catch (e: any) {
     return jsonError(e?.message || 'Unknown error', 500);

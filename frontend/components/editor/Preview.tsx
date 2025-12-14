@@ -15,6 +15,7 @@ import {
 
 interface PreviewProps {
   files: Record<string, string>;
+  serverUrl?: string | null;
 }
 
 type ViewportSize = 'desktop' | 'tablet' | 'mobile';
@@ -25,10 +26,19 @@ const VIEWPORT_SIZES: Record<ViewportSize, { width: string; icon: typeof Monitor
   mobile: { width: '375px', icon: Smartphone, label: 'Mobile' },
 };
 
-export default function Preview({ files }: PreviewProps) {
+export default function Preview({ files, serverUrl }: PreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [viewport, setViewport] = useState<ViewportSize>('desktop');
   const [key, setKey] = useState(0);
+
+  // Check if this is a fullstack project with server
+  const isFullstackProject = () => {
+    return Boolean(
+      files['server.js'] ||
+      files['package.json']?.includes('"express"') ||
+      Object.keys(files).some(f => f.startsWith('routes/'))
+    );
+  };
 
   // Check if project uses React/JSX
   const isReactProject = () => {
@@ -163,8 +173,11 @@ export default function Preview({ files }: PreviewProps) {
     return generateStaticPreviewHTML();
   };
 
-  // Update preview when files change
+  // Update preview when files change (for static/frontend-only projects)
   useEffect(() => {
+    // If we have a server URL, use that instead of generating HTML
+    if (serverUrl) return;
+    
     if (iframeRef.current) {
       const doc = iframeRef.current.contentDocument;
       if (doc) {
@@ -173,18 +186,80 @@ export default function Preview({ files }: PreviewProps) {
         doc.close();
       }
     }
-  }, [files, key]);
+  }, [files, key, serverUrl]);
 
   const handleRefresh = () => {
     setKey(k => k + 1);
   };
 
   const openInNewTab = () => {
+    if (serverUrl) {
+      window.open(serverUrl, '_blank');
+      return;
+    }
     const newWindow = window.open('', '_blank');
     if (newWindow) {
       newWindow.document.write(generatePreviewHTML());
       newWindow.document.close();
     }
+  };
+
+  // Generate fullstack placeholder HTML
+  const generateFullstackPlaceholder = () => {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .container {
+            text-align: center;
+            padding: 40px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            max-width: 500px;
+          }
+          h1 {
+            font-size: 24px;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+          }
+          p { opacity: 0.8; margin-bottom: 12px; line-height: 1.6; }
+          .icon { font-size: 48px; margin-bottom: 16px; }
+          .hint {
+            background: rgba(59, 130, 246, 0.2);
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-top: 16px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="icon">🚀</div>
+          <h1>Fullstack Project Detected</h1>
+          <p>This is a fullstack project with a backend server.</p>
+          <p>Click the <strong>Run</strong> button to start the server and see the preview.</p>
+          <div class="hint">
+            💡 The server will install dependencies and start automatically.
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
   };
 
   return (
@@ -210,9 +285,13 @@ export default function Preview({ files }: PreviewProps) {
 
         {/* URL Bar */}
         <div className="flex-1 flex items-center gap-2 bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-1 mx-1">
-          <Lock className="w-3.5 h-3.5 text-[#3fb950]" />
+          {serverUrl ? (
+            <Globe className="w-3.5 h-3.5 text-[#58a6ff]" />
+          ) : (
+            <Lock className="w-3.5 h-3.5 text-[#3fb950]" />
+          )}
           <span className="text-sm text-[#8b949e] truncate">
-            localhost:3000
+            {serverUrl || (isFullstackProject() ? 'Click Run to start server' : 'localhost:3000')}
           </span>
         </div>
 
@@ -258,13 +337,31 @@ export default function Preview({ files }: PreviewProps) {
             maxWidth: '100%',
           }}
         >
-          <iframe
-            ref={iframeRef}
-            key={key}
-            title="Preview"
-            className="w-full h-full border-0"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups"
-          />
+          {serverUrl ? (
+            <iframe
+              key={key}
+              src={serverUrl}
+              title="Server Preview"
+              className="w-full h-full border-0"
+              sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups"
+            />
+          ) : isFullstackProject() ? (
+            <iframe
+              ref={iframeRef}
+              key={key}
+              srcDoc={generateFullstackPlaceholder()}
+              title="Fullstack Preview"
+              className="w-full h-full border-0"
+            />
+          ) : (
+            <iframe
+              ref={iframeRef}
+              key={key}
+              title="Preview"
+              className="w-full h-full border-0"
+              sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups"
+            />
+          )}
         </div>
       </div>
     </div>

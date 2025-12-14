@@ -1,0 +1,149 @@
+Comprehensive Prompt for Replit Agent
+Here's a detailed prompt you can give to Replit to set up the backend infrastructure so I can help you build a full-stack Todo app:
+
+Prompt for Replit:
+I need you to set up a complete Node.js backend for my Todo application with authentication. Here's exactly what I need:
+
+## 1. Project Structure
+Create this file structure:
+/ ├── server.js # Main Express server ├── package.json # Dependencies ├── .env # Environment variables (create .env.example too) ├── /public # Static files folder │ ├── index.html # Move existing index.html here │ ├── style.css # Move existing style.css here │ └── app.js # Frontend JavaScript (I'll provide this) ├── /routes │ ├── auth.js # Authentication routes │ └── todos.js # Todo CRUD routes ├── /middleware │ └── auth.js # JWT verification middleware └── /db └── database.js # SQLite database setup
+
+
+## 2. Dependencies (package.json)
+Install these packages:
+- express
+- cors
+- dotenv
+- bcryptjs
+- jsonwebtoken
+- better-sqlite3 (or sqlite3)
+- helmet (for security)
+- express-rate-limit
+
+## 3. Database Schema (SQLite)
+Create these tables:
+
+**users table:**
+- id (INTEGER PRIMARY KEY AUTOINCREMENT)
+- email (TEXT UNIQUE NOT NULL)
+- password (TEXT NOT NULL) - bcrypt hashed
+- name (TEXT)
+- provider (TEXT DEFAULT 'local') - for OAuth later
+- created_at (DATETIME DEFAULT CURRENT_TIMESTAMP)
+
+**todos table:**
+- id (INTEGER PRIMARY KEY AUTOINCREMENT)
+- user_id (INTEGER NOT NULL, FOREIGN KEY to users.id)
+- text (TEXT NOT NULL)
+- completed (BOOLEAN DEFAULT 0)
+- created_at (DATETIME DEFAULT CURRENT_TIMESTAMP)
+- updated_at (DATETIME DEFAULT CURRENT_TIMESTAMP)
+
+## 4. API Endpoints Needed
+
+**Auth Routes (/api/auth):**
+- POST /api/auth/register - Create new user (email, password, name)
+- POST /api/auth/login - Login user, return JWT token
+- GET /api/auth/me - Get current user (protected)
+- POST /api/auth/logout - Logout (optional, mainly client-side)
+
+**Todo Routes (/api/todos) - All Protected:**
+- GET /api/todos - Get all todos for logged-in user
+- POST /api/todos - Create new todo
+- PUT /api/todos/:id - Update todo (text or completed status)
+- DELETE /api/todos/:id - Delete todo
+- DELETE /api/todos/completed - Delete all completed todos
+
+## 5. Environment Variables (.env)
+PORT=3000 JWT_SECRET=your-super-secret-key-change-this NODE_ENV=development
+
+
+## 6. Server Configuration (server.js)
+- Serve static files from /public folder
+- Use JSON body parser
+- Enable CORS for development
+- Use helmet for security headers
+- Add rate limiting (100 requests per 15 minutes per IP)
+- All /api/* routes should return JSON
+- Root route should serve index.html
+
+## 7. JWT Authentication
+- Tokens should expire in 7 days
+- Include user id and email in token payload
+- Auth middleware should verify token from Authorization header (Bearer token)
+- Also check for token in cookies as fallback
+
+## 8. Response Format
+All API responses should follow this format:
+```json
+// Success
+{
+  "success": true,
+  "data": { ... }
+}
+
+// Error
+{
+  "success": false,
+  "error": "Error message here"
+}
+9. Validation Requirements
+Email must be valid format
+Password minimum 6 characters
+Todo text cannot be empty
+Users can only access their own todos
+10. Important Notes
+Do NOT modify the frontend files (index.html, style.css) - I have those ready
+Make sure the server runs on port 3000 (or process.env.PORT)
+Initialize the database tables on server start if they don't exist
+Add proper error handling for all routes
+Log errors to console in development mode
+After setup, the app should:
+
+Start with npm start or node server.js
+Serve the frontend at http://localhost:3000
+Have all API endpoints working at /api/*
+Please create all these files and make sure the server runs without errors. I'll then add my frontend JavaScript (app.js) to connect everything.
+
+
+---
+
+## What You'll Get From Replit
+
+After Replit processes this prompt, you should have:
+
+1. **A working Express server** with all routes
+2. **SQLite database** with users and todos tables
+3. **JWT authentication** system
+4. **Protected API endpoints** for todos
+5. **Your existing frontend files** in the `/public` folder
+
+---
+
+## What I'll Provide Next
+
+Once Replit sets up the backend, come back to me and I'll give you the complete `app.js` file that:
+
+- Connects to all the API endpoints
+- Handles login/register forms
+- Manages JWT tokens
+- Performs CRUD operations on todos
+- Shows loading states and error messages
+- Syncs everything with the backend
+
+---
+
+## Quick Verification Checklist
+
+After Replit finishes, verify these work:
+
+```bash
+# Server should start
+npm start
+
+# These endpoints should respond (test with curl or browser):
+# GET  http://localhost:3000/          → Should serve index.html
+# POST http://localhost:3000/api/auth/register  → Should accept JSON
+# POST http://localhost:3000/api/auth/login     → Should return JWT
+# GET  http://localhost:3000/api/todos          → Should require auth
+Would you like me to also prepare the complete app.js frontend file now, so you have it ready once Replit sets up the backend?

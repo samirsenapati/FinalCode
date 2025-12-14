@@ -37,8 +37,8 @@ import Terminal from '@/components/editor/Terminal';
 import { useDebouncedCallback } from '@/lib/hooks/useDebouncedCallback';
 import { useCrossOriginIsolation } from '@/lib/hooks/useCrossOriginIsolation';
 import { useKeyboardShortcuts } from '@/lib/hooks/useKeyboardShortcuts';
-import { buildNodeRunShim, getDefaultRunEntry } from '@/lib/webcontainer/runnerUtils';
-import { runNodeScript, writeFilesToWebContainer } from '@/lib/webcontainer/runner';
+import { buildNodeRunShim, getDefaultRunEntry, isFullstackProject, getServerStartCommand, needsNpmInstall } from '@/lib/webcontainer/runnerUtils';
+import { runNodeScript, writeFilesToWebContainer, installDependencies, startServer, type ServerProcess } from '@/lib/webcontainer/runner';
 import type { FileMap, Project } from '@/lib/projects/types';
 import { clearLastProjectId, getLastProjectId, safeProjectName, setLastProjectId } from '@/lib/projects/storage';
 import {
@@ -171,6 +171,8 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
   ]);
 
   const [isRunning, setIsRunning] = useState(false);
+  const [serverProcess, setServerProcess] = useState<ServerProcess | null>(null);
+  const [serverUrl, setServerUrl] = useState<string | null>(null);
 
   const { isIsolated } = useCrossOriginIsolation();
 
@@ -424,40 +426,87 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
         return;
       }
 
-      setTerminalOutput((prev) => [...prev, '> Running in WebContainers...', '']);
-
-      const entry = getDefaultRunEntry(files);
-      if (!entry) {
-        setTerminalOutput((prev) => [
-          ...prev,
-          '> No runnable JS entry found for Node.',
-          '> Create run.js, script.js, or index.js.',
-          '> Tip: HTML projects can be previewed in the Preview panel.',
-          '',
-        ]);
-        return;
+      // Stop any existing server
+      if (serverProcess) {
+        serverProcess.kill();
+        setServerProcess(null);
+        setServerUrl(null);
       }
 
-      const shimPath = 'finalcode-runner.mjs';
-      await writeFilesToWebContainer({
-        ...files,
-        [shimPath]: buildNodeRunShim(entry),
-      });
+      setTerminalOutput((prev) => [...prev, '> Running in WebContainers...', '']);
 
-      setTerminalOutput((prev) => [...prev, `> node ${entry}`, '']);
+      // Write files to WebContainer
+      await writeFilesToWebContainer(files);
 
-      const result = await runNodeScript({
-        entryPath: shimPath,
-        onOutput: (line) => setTerminalOutput((prev) => [...prev, line]),
-      });
+      // Check if this is a fullstack project
+      const isFullstack = isFullstackProject(files);
 
-      setTerminalOutput((prev) => [...prev, `> Exit code: ${result.exitCode}`, '']);
+      if (isFullstack) {
+        setTerminalOutput((prev) => [...prev, '> Detected fullstack project', '']);
+
+        // Install dependencies if needed
+        if (needsNpmInstall(files)) {
+          setTerminalOutput((prev) => [...prev, '> Installing dependencies...', '']);
+          const installResult = await installDependencies({
+            onOutput: (line) => setTerminalOutput((prev) => [...prev, line]),
+          });
+          if (installResult.exitCode !== 0) {
+            setTerminalOutput((prev) => [...prev, '> npm install failed', '']);
+            return;
+          }
+          setTerminalOutput((prev) => [...prev, '> Dependencies installed successfully', '']);
+        }
+
+        // Start the server
+        const startCmd = getServerStartCommand(files);
+        setTerminalOutput((prev) => [...prev, '> Starting server...', '']);
+        
+        const proc = await startServer({
+          command: startCmd,
+          onOutput: (line) => setTerminalOutput((prev) => [...prev, line]),
+          onServerReady: (url) => {
+            setServerUrl(url);
+            setTerminalOutput((prev) => [...prev, `> Server available at: ${url}`, '']);
+          },
+        });
+        
+        setServerProcess(proc);
+        setTerminalOutput((prev) => [...prev, '> Server process started', '']);
+      } else {
+        // Simple script execution for non-fullstack projects
+        const entry = getDefaultRunEntry(files);
+        if (!entry) {
+          setTerminalOutput((prev) => [
+            ...prev,
+            '> No runnable JS entry found for Node.',
+            '> Create server.js, run.js, script.js, or index.js.',
+            '> Tip: HTML projects can be previewed in the Preview panel.',
+            '',
+          ]);
+          return;
+        }
+
+        const shimPath = 'finalcode-runner.mjs';
+        await writeFilesToWebContainer({
+          ...files,
+          [shimPath]: buildNodeRunShim(entry),
+        });
+
+        setTerminalOutput((prev) => [...prev, `> node ${entry}`, '']);
+
+        const result = await runNodeScript({
+          entryPath: shimPath,
+          onOutput: (line) => setTerminalOutput((prev) => [...prev, line]),
+        });
+
+        setTerminalOutput((prev) => [...prev, `> Exit code: ${result.exitCode}`, '']);
+      }
     } catch (e: any) {
       setTerminalOutput((prev) => [...prev, `> Run failed: ${e?.message || e}`, '']);
     } finally {
       setIsRunning(false);
     }
-  }, [files, isIsolated]);
+  }, [files, isIsolated, serverProcess]);
 
   const handleAICodeGenerated = useCallback(
     (generatedCode: string, language: string) => {
@@ -873,7 +922,7 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
             {/* Preview Tab */}
             {rightPanelTab === 'preview' && (
               <div className="h-full bg-white">
-                <Preview files={files} />
+                <Preview files={files} serverUrl={serverUrl} />
               </div>
             )}
 

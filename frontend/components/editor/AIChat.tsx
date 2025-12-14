@@ -22,11 +22,11 @@ import { loadAISettings, getActiveApiKey, AVAILABLE_MODELS } from '@/lib/ai/sett
 
 // Example prompts for inspiration
 const EXAMPLE_PROMPTS = [
-  "Create a beautiful todo app with animations",
-  "Build a weather dashboard with API integration",
+  "Create a todo app with user authentication and database",
+  "Build a REST API with Express and SQLite",
   "Make a landing page for a SaaS product",
-  "Create a calculator with a modern design",
-  "Build a simple game like tic-tac-toe",
+  "Create a fullstack blog with login system",
+  "Build a task manager with JWT authentication",
 ];
 
 export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFiles, onStatusChange }: AIChatProps) {
@@ -34,7 +34,7 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
     {
       id: '1',
       role: 'assistant',
-      content: "Hi! I'm **FinalCode AI**, powered by cutting-edge models like **Claude Opus 4.5** and **GPT-5.2**.\n\nTell me what you want to build, and I'll create the code for you. Try something like:\n\n- \"Create a beautiful todo app with animations\"\n- \"Build a calculator with a modern glassmorphism design\"\n- \"Make a landing page for my startup\"\n- \"Create a weather dashboard with API integration\"\n\nI can write HTML, CSS, and JavaScript to bring your ideas to life! Configure your preferred AI model in **AI Settings**.",
+      content: "Hi! I'm **FinalCode AI**, powered by cutting-edge models like **Claude Opus 4.5** and **GPT-5.2**.\n\nI can build **fullstack applications** with frontend and backend code. Try something like:\n\n- \"Create a todo app with user authentication and database\"\n- \"Build a REST API with Express and JWT authentication\"\n- \"Make a fullstack blog with login system\"\n- \"Create a task manager with SQLite database\"\n\nI generate complete, runnable code including:\n- **Frontend**: HTML, CSS, JavaScript\n- **Backend**: Node.js, Express, SQLite, JWT auth\n\nConfigure your preferred AI model in **AI Settings**.",
       timestamp: new Date(),
     }
   ]);
@@ -58,15 +58,17 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  // Extract code blocks from response
+  // Extract code blocks from response - supports file paths like "server.js", "routes/auth.js"
   const extractCode = (content: string): { code: string; language: string }[] => {
     const codeBlocks: { code: string; language: string }[] = [];
-    const regex = /```(\w+)?\n([\s\S]*?)```/g;
+    // Updated regex to capture file paths with dots and slashes (e.g., server.js, routes/auth.js)
+    const regex = /```([^\n`]+)?\n([\s\S]*?)```/g;
     let match;
     
     while ((match = regex.exec(content)) !== null) {
+      const identifier = (match[1] || 'javascript').trim();
       codeBlocks.push({
-        language: match[1] || 'javascript',
+        language: identifier,
         code: match[2].trim()
       });
     }
@@ -139,23 +141,46 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
 
       const codeBlocks = extractCode(responseText);
 
-      // If the assistant returned multiple file blocks, map common filenames
+      // Extract files from code blocks - supports both simple and fullstack patterns
       const extractedFiles: Record<string, string> = {};
       for (const block of codeBlocks) {
-        if (block.language === 'html') extractedFiles['index.html'] = block.code;
-        if (block.language === 'css') extractedFiles['style.css'] = block.code;
-        if (block.language === 'javascript' || block.language === 'js') extractedFiles['script.js'] = block.code;
+        const lang = block.language.trim();
+        
+        // Simple frontend patterns
+        if (lang === 'html') {
+          extractedFiles['index.html'] = block.code;
+        } else if (lang === 'css') {
+          extractedFiles['style.css'] = block.code;
+        } else if (lang === 'javascript' || lang === 'js') {
+          extractedFiles['script.js'] = block.code;
+        } else if (lang === 'json' && block.code.includes('"name"') && block.code.includes('"dependencies"')) {
+          extractedFiles['package.json'] = block.code;
+        } else if (lang.includes('.') || lang.includes('/')) {
+          // Fullstack file paths (e.g., "server.js", "routes/auth.js", "public/index.html")
+          extractedFiles[lang] = block.code;
+        }
       }
 
+      // Detect if this is a fullstack project
+      const isFullstack = Boolean(
+        extractedFiles['server.js'] || 
+        extractedFiles['package.json'] ||
+        Object.keys(extractedFiles).some(f => f.startsWith('routes/') || f.startsWith('middleware/'))
+      );
+
       if (Object.keys(extractedFiles).length >= 2) {
-        onStatusChange?.('Applying generated updates across your project files...');
+        onStatusChange?.(isFullstack 
+          ? 'Applying fullstack project files...' 
+          : 'Applying generated updates across your project files...');
         onReplaceAllFiles({ ...currentFiles, ...extractedFiles });
       } else if (codeBlocks.length > 0) {
         const mainCode = codeBlocks[codeBlocks.length - 1];
         onStatusChange?.(`Updating ${mainCode.language || 'code'} to match your request...`);
         onCodeGenerated(mainCode.code, mainCode.language);
       }
-      onStatusChange?.('Done — preview the changes on the right.');
+      onStatusChange?.(isFullstack 
+        ? 'Done — click Run to start the server, or use the terminal to run npm start.' 
+        : 'Done — preview the changes on the right.');
 
     } catch (error: any) {
       console.error('Chat error:', error);
