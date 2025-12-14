@@ -3,9 +3,10 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getOpenAITools, getAnthropicTools } from '@/lib/agent/tools';
 import { executeTool, FileMap, ToolResult } from '@/lib/agent/handlers';
-import { AGENT_SYSTEM_PROMPT, AGENT_CONTINUE_PROMPT } from '@/lib/agent/prompts';
+import { AGENT_SYSTEM_PROMPT, AGENT_FORCE_ACTION_PROMPT } from '@/lib/agent/prompts';
 
-const MAX_ITERATIONS = 15;
+const MAX_ITERATIONS = 20;
+const MAX_NUDGES = 3;
 const MAX_TOKENS = 8192;
 
 type Provider = 'openai' | 'anthropic';
@@ -48,7 +49,8 @@ async function callOpenAI(
   apiKey: string,
   model: string,
   messages: any[],
-  tools: any[]
+  tools: any[],
+  forceTools: boolean = false
 ): Promise<{ content: string | null; tool_calls: any[] | null; error?: string }> {
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -60,7 +62,7 @@ async function callOpenAI(
       model,
       messages,
       tools,
-      tool_choice: 'auto',
+      tool_choice: forceTools ? 'required' : 'auto',
       max_completion_tokens: MAX_TOKENS,
       temperature: 0.1,
     }),
@@ -97,6 +99,7 @@ async function callAnthropic(
       system: AGENT_SYSTEM_PROMPT,
       messages,
       tools,
+      tool_choice: { type: 'any' },
       temperature: 0.1,
     }),
   });
@@ -176,6 +179,8 @@ export async function POST(request: NextRequest) {
     const events: StreamEvent[] = [];
     let isComplete = false;
     let completeSummary: string | undefined;
+    let nudgeCount = 0;
+    let hasWrittenFiles = false;
 
     const filesContext = Object.keys(files).length > 0
       ? `\n\nCurrent project files:\n${Object.keys(files).join('\n')}`
@@ -202,8 +207,10 @@ export async function POST(request: NextRequest) {
     };
 
     for (let iteration = 0; iteration < MAX_ITERATIONS && !isComplete; iteration++) {
+      const forceTools = nudgeCount > 0 && provider === 'openai';
+      
       const response = provider === 'openai'
-        ? await callOpenAI(apiKey, model, messages, tools)
+        ? await callOpenAI(apiKey, model, messages, tools, forceTools)
         : await callAnthropic(apiKey, model, messages, tools);
 
       if (response.error) {
@@ -216,10 +223,38 @@ export async function POST(request: NextRequest) {
       }
 
       if (!response.tool_calls || response.tool_calls.length === 0) {
+        if (nudgeCount < MAX_NUDGES && !hasWrittenFiles) {
+          nudgeCount++;
+          
+          if (provider === 'openai') {
+            messages.push({ role: 'assistant', content: response.content });
+            messages.push({ 
+              role: 'user', 
+              content: AGENT_FORCE_ACTION_PROMPT + `\n\n[${getFilesContext()}]`
+            });
+          } else {
+            messages.push({ 
+              role: 'assistant', 
+              content: [{ type: 'text', text: response.content || 'I will take action now.' }] 
+            });
+            messages.push({ 
+              role: 'user', 
+              content: AGENT_FORCE_ACTION_PROMPT + `\n\n[${getFilesContext()}]`
+            });
+          }
+          
+          events.push({ 
+            type: 'text', 
+            content: '*Continuing to work on the task...*' 
+          });
+          continue;
+        }
+        
         isComplete = true;
         break;
       }
 
+      nudgeCount = 0;
       const toolResults: any[] = [];
 
       for (const toolCall of response.tool_calls) {
@@ -233,10 +268,15 @@ export async function POST(request: NextRequest) {
           arguments: toolArgs,
         });
 
-        if (toolName === 'run_command') {
+        if (toolName === 'write_file') {
+          hasWrittenFiles = true;
+          const result = executeTool(toolName, toolArgs, files);
+          events.push({ type: 'tool_result', tool: toolName, result });
+          toolResults.push({ toolId, toolName, result: JSON.stringify(result) });
+        } else if (toolName === 'run_command') {
           const result: ToolResult = {
             success: true,
-            result: 'Command execution is handled client-side. The command will be queued for execution.',
+            result: 'Note: Commands run automatically when the app starts. Focus on fixing the code files. If there are issues, identify and fix them in the source code.',
           };
           events.push({ type: 'tool_result', tool: toolName, result });
           toolResults.push({ toolId, toolName, result: JSON.stringify(result) });
