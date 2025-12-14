@@ -1,0 +1,608 @@
+Below is a simplified calculator (single mode) with a Hindi/English language toggle. It keeps the UI clean, removes the scientific mode complexity, and localizes labels + number formatting (Hindi digits when Hindi is selected).
+
+Replace your current files with these.
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Simple Calculator</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+  <main class="app" aria-label="Calculator app">
+    <header class="top">
+      <div>
+        <h1 id="title">Calculator</h1>
+        <p class="hint" id="hint">
+          Keyboard: 0–9, + − × ÷, Enter, Backspace, Esc, .
+        </p>
+      </div>
+
+      <div class="controls" aria-label="Controls">
+        <label class="control" title="Language">
+          <span class="control__label" id="langLabel">Language</span>
+          <select id="lang" class="select" aria-label="Language">
+            <option value="en" selected>English</option>
+            <option value="hi">हिन्दी</option>
+          </select>
+        </label>
+      </div>
+    </header>
+
+    <section class="calc" aria-label="Calculator">
+      <div class="display" role="group" aria-label="Display">
+        <div id="history" class="history" aria-live="polite"></div>
+        <div id="screen" class="screen" aria-live="polite" aria-label="Current value">0</div>
+      </div>
+
+      <div id="keys" class="keys" role="group" aria-label="Calculator keys">
+        <button class="key key--util" data-action="clear" aria-label="All clear">AC</button>
+        <button class="key key--util" data-action="ce" aria-label="Clear entry">CE</button>
+        <button class="key key--util" data-action="backspace" aria-label="Backspace">⌫</button>
+        <button class="key key--op" data-op="/" aria-label="Divide">÷</button>
+
+        <button class="key" data-digit="7">7</button>
+        <button class="key" data-digit="8">8</button>
+        <button class="key" data-digit="9">9</button>
+        <button class="key key--op" data-op="*" aria-label="Multiply">×</button>
+
+        <button class="key" data-digit="4">4</button>
+        <button class="key" data-digit="5">5</button>
+        <button class="key" data-digit="6">6</button>
+        <button class="key key--op" data-op="-" aria-label="Subtract">−</button>
+
+        <button class="key" data-digit="1">1</button>
+        <button class="key" data-digit="2">2</button>
+        <button class="key" data-digit="3">3</button>
+        <button class="key key--op" data-op="+" aria-label="Add">+</button>
+
+        <button class="key key--util" data-action="sign" aria-label="Toggle sign">±</button>
+        <button class="key" data-digit="0">0</button>
+        <button class="key" data-action="dot" aria-label="Decimal point">.</button>
+        <button class="key key--eq" data-action="equals" aria-label="Equals">=</button>
+      </div>
+
+      <footer class="footer">
+        <div class="mini" id="tip">
+          <span class="dot" aria-hidden="true"></span>
+          <span id="tipText">Tip: Use x or X for ×, / for ÷.</span>
+        </div>
+      </footer>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
+
+:root{
+  --bg1:#0b1220;
+  --bg2:#1b1450;
+  --panel: rgba(255,255,255,.06);
+  --border: rgba(255,255,255,.12);
+  --text: rgba(255,255,255,.92);
+  --muted: rgba(255,255,255,.65);
+  --shadow: 0 18px 60px rgba(0,0,0,.45);
+
+  --key: rgba(255,255,255,.08);
+  --keyHover: rgba(255,255,255,.12);
+  --keyActive: rgba(255,255,255,.16);
+
+  --accent1:#60a5fa;
+  --accent2:#a78bfa;
+
+  --radius: 22px;
+}
+
+*{ box-sizing:border-box; margin:0; padding:0; }
+html, body{ height:100%; }
+body{
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+  color: var(--text);
+  background: radial-gradient(1200px 800px at 20% 10%, rgba(96,165,250,.25), transparent 60%),
+              radial-gradient(900px 700px at 80% 20%, rgba(167,139,250,.22), transparent 55%),
+              linear-gradient(135deg, var(--bg1), var(--bg2));
+  display:grid;
+  place-items:center;
+  padding: 24px;
+}
+
+.app{
+  width: min(560px, 96vw);
+  display: grid;
+  gap: 14px;
+}
+
+.top{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap: 12px;
+  padding: 6px 4px;
+}
+
+h1{
+  font-size: 22px;
+  letter-spacing: .2px;
+  background: linear-gradient(135deg, var(--accent1), var(--accent2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.hint{
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.35;
+  max-width: 52ch;
+}
+
+.controls{
+  display:flex;
+  gap: 10px;
+  align-items:center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.control{
+  user-select:none;
+  display:inline-flex;
+  align-items:center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,.05);
+  box-shadow: 0 10px 30px rgba(0,0,0,.25);
+}
+
+.control__label{
+  font-weight: 650;
+  color: rgba(255,255,255,.78);
+}
+
+.select{
+  appearance: none;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.92);
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-weight: 650;
+  cursor: pointer;
+  outline: none;
+}
+.select:focus{
+  border-color: rgba(96,165,250,.45);
+  box-shadow: 0 0 0 4px rgba(96,165,250,.12);
+}
+
+.calc{
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow:hidden;
+}
+
+.display{
+  padding: 18px 18px 14px;
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+  border-bottom: 1px solid var(--border);
+}
+
+.history{
+  min-height: 18px;
+  font-size: 13px;
+  color: var(--muted);
+  text-align: right;
+  overflow:hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.screen{
+  margin-top: 8px;
+  font-size: 40px;
+  font-weight: 750;
+  text-align: right;
+  letter-spacing: .3px;
+  overflow:hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.keys{
+  display:grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  padding: 14px;
+}
+
+.key{
+  appearance:none;
+  border: 1px solid rgba(255,255,255,.10);
+  background: var(--key);
+  color: rgba(255,255,255,.92);
+  border-radius: 16px;
+  padding: 16px 12px;
+  font-size: 18px;
+  font-weight: 650;
+  cursor:pointer;
+  transition: transform .06s ease, background .12s ease, border-color .12s ease;
+  outline: none;
+}
+.key:hover{ background: var(--keyHover); }
+.key:active{ transform: translateY(1px); background: var(--keyActive); }
+
+.key--op{
+  border-color: rgba(96,165,250,.25);
+  background: linear-gradient(180deg, rgba(96,165,250,.18), rgba(255,255,255,.06));
+}
+.key--op:hover{
+  background: linear-gradient(180deg, rgba(96,165,250,.24), rgba(255,255,255,.08));
+}
+
+.key--util{
+  border-color: rgba(255,255,255,.16);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.86);
+}
+
+.key--eq{
+  border-color: rgba(52,211,153,.35);
+  background: linear-gradient(135deg, rgba(52,211,153,.22), rgba(96,165,250,.18));
+}
+.key--eq:hover{
+  background: linear-gradient(135deg, rgba(52,211,153,.28), rgba(96,165,250,.22));
+}
+
+.footer{
+  padding: 0 14px 14px;
+}
+.mini{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 12.5px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.04);
+}
+.mini .dot{
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--accent1), var(--accent2));
+  box-shadow: 0 0 0 4px rgba(96,165,250,.12);
+}
+
+@media (max-width: 520px){
+  .screen{ font-size: 34px; }
+  .key{ padding: 14px 10px; border-radius: 14px; }
+}
+
+const screenEl = document.getElementById('screen');
+const historyEl = document.getElementById('history');
+const keysEl = document.getElementById('keys');
+
+const langEl = document.getElementById('lang');
+const titleEl = document.getElementById('title');
+const hintEl = document.getElementById('hint');
+const langLabelEl = document.getElementById('langLabel');
+const tipTextEl = document.getElementById('tipText');
+
+const MAX_LEN = 18;
+
+const i18n = {
+  en: {
+    title: 'Calculator',
+    hint: 'Keyboard: 0–9, + − × ÷, Enter, Backspace, Esc, .',
+    language: 'Language',
+    tip: 'Tip: Use x or X for ×, / for ÷.',
+    error: 'Error'
+  },
+  hi: {
+    title: 'कैलकुलेटर',
+    hint: 'कीबोर्ड: 0–9, + − × ÷, Enter, Backspace, Esc, .',
+    language: 'भाषा',
+    tip: 'टिप: × के लिए x या X, ÷ के लिए / इस्तेमाल करें।',
+    error: 'त्रुटि'
+  }
+};
+
+const state = {
+  lang: 'en',
+  display: '0',
+  a: null,
+  op: null,            // '+', '-', '*', '/'
+  waitingForB: false,
+  justEvaluated: false
+};
+
+function symbol(op) {
+  if (op === '*') return '×';
+  if (op === '/') return '÷';
+  return op;
+}
+
+function toHindiDigits(str) {
+  const map = { '0':'०','1':'१','2':'२','3':'३','4':'४','5':'५','6':'६','7':'७','8':'८','9':'९' };
+  return String(str).replace(/[0-9]/g, d => map[d]);
+}
+
+function localizeText(str) {
+  return state.lang === 'hi' ? toHindiDigits(str) : String(str);
+}
+
+function formatForScreen(strOrNum) {
+  let s = String(strOrNum);
+
+  if (s === 'Infinity' || s === '-Infinity' || s === 'NaN') return i18n[state.lang].error;
+
+  const n = Number(s);
+  if (Number.isFinite(n)) {
+    const abs = Math.abs(n);
+    if ((abs !== 0 && (abs >= 1e12 || abs < 1e-6)) || s.length > MAX_LEN) {
+      s = n.toExponential(8).replace(/\.?0+e/, 'e');
+    } else if (s.length > MAX_LEN) {
+      s = n.toPrecision(12).replace(/\.?0+$/, '');
+    }
+  }
+
+  if (s.length > MAX_LEN) s = s.slice(0, MAX_LEN);
+  return localizeText(s);
+}
+
+function setDisplay(value) {
+  state.display = String(value);
+  screenEl.textContent = formatForScreen(state.display);
+}
+
+function setHistory(text) {
+  historyEl.textContent = text ? localizeText(text) : '';
+}
+
+function currentNumber() {
+  const n = Number(state.display);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+function clearAll() {
+  state.display = '0';
+  state.a = null;
+  state.op = null;
+  state.waitingForB = false;
+  state.justEvaluated = false;
+  setHistory('');
+  setDisplay('0');
+}
+
+function clearEntry() {
+  state.display = '0';
+  state.waitingForB = false;
+  state.justEvaluated = false;
+  setDisplay('0');
+}
+
+function backspace() {
+  if (state.justEvaluated) state.justEvaluated = false;
+
+  if (state.waitingForB) {
+    state.waitingForB = false;
+    state.display = '0';
+  }
+
+  if (state.display.length <= 1 || (state.display.length === 2 && state.display.startsWith('-'))) {
+    setDisplay('0');
+    return;
+  }
+  setDisplay(state.display.slice(0, -1));
+}
+
+function inputDigit(d) {
+  if (state.justEvaluated) {
+    state.a = null;
+    state.op = null;
+    state.waitingForB = false;
+    state.justEvaluated = false;
+    setHistory('');
+    setDisplay('0');
+  }
+
+  if (state.waitingForB) {
+    state.waitingForB = false;
+    state.display = '0';
+  }
+
+  if (state.display === '0') setDisplay(d);
+  else if (state.display.length < 32) setDisplay(state.display + d);
+}
+
+function inputDot() {
+  if (state.justEvaluated) {
+    state.a = null;
+    state.op = null;
+    state.waitingForB = false;
+    state.justEvaluated = false;
+    setHistory('');
+    setDisplay('0');
+  }
+
+  if (state.waitingForB) {
+    state.waitingForB = false;
+    state.display = '0';
+  }
+
+  if (!state.display.includes('.')) setDisplay(state.display + '.');
+}
+
+function toggleSign() {
+  if (state.display === '0' || state.display === '0.') return;
+  if (state.display.startsWith('-')) setDisplay(state.display.slice(1));
+  else setDisplay('-' + state.display);
+}
+
+function compute(a, op, b) {
+  switch (op) {
+    case '+': return a + b;
+    case '-': return a - b;
+    case '*': return a * b;
+    case '/': return b === 0 ? NaN : a / b;
+    default: return b;
+  }
+}
+
+function chooseOp(op) {
+  const b = currentNumber();
+
+  if (state.op && state.a !== null && !state.waitingForB) {
+    const result = compute(state.a, state.op, b);
+    setHistory(`${formatPlain(state.a)} ${symbol(state.op)} ${formatPlain(b)}`);
+    if (!Number.isFinite(result)) {
+      setDisplay('NaN');
+      state.a = null;
+      state.op = null;
+      state.waitingForB = true;
+      state.justEvaluated = true;
+      return;
+    }
+    state.a = result;
+    setDisplay(String(result));
+  } else if (state.a === null) {
+    state.a = b;
+  }
+
+  state.op = op;
+  state.waitingForB = true;
+  state.justEvaluated = false;
+
+  setHistory(`${formatPlain(state.a)} ${symbol(op)}`);
+}
+
+function equals() {
+  if (!state.op || state.a === null) return;
+
+  const b = currentNumber();
+  const result = compute(state.a, state.op, b);
+
+  setHistory(`${formatPlain(state.a)} ${symbol(state.op)} ${formatPlain(b)} =`);
+
+  if (!Number.isFinite(result)) setDisplay('NaN');
+  else setDisplay(String(result));
+
+  state.a = Number.isFinite(result) ? result : null;
+  state.op = null;
+  state.waitingForB = true;
+  state.justEvaluated = true;
+}
+
+function formatPlain(n) {
+  // plain (non-localized) formatting for internal history string, then localized at render time
+  const s = String(n);
+  if (s === 'Infinity' || s === '-Infinity' || s === 'NaN') return i18n[state.lang].error;
+  return s;
+}
+
+/* UI */
+function applyLanguage(lang) {
+  state.lang = lang;
+
+  const t = i18n[state.lang];
+  document.documentElement.lang = state.lang === 'hi' ? 'hi' : 'en';
+
+  titleEl.textContent = t.title;
+  hintEl.textContent = t.hint;
+  langLabelEl.textContent = t.language;
+  tipTextEl.textContent = t.tip;
+
+  // Re-render current display/history in selected numeral system
+  setDisplay(state.display);
+  // historyEl already contains localized text; rebuild from state if you want exactness:
+  // We'll keep it simple: leave as-is unless you want strict rebuild.
+  // But we can safely re-localize by reading a non-localized source; we don't store it.
+  // So: no-op for history beyond current content.
+}
+
+function handleKeysClick(e) {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+
+  const digit = btn.getAttribute('data-digit');
+  const op = btn.getAttribute('data-op');
+  const action = btn.getAttribute('data-action');
+
+  if (digit !== null) inputDigit(digit);
+  else if (op) chooseOp(op);
+  else if (action === 'dot') inputDot();
+  else if (action === 'equals') equals();
+  else if (action === 'clear') clearAll();
+  else if (action === 'ce') clearEntry();
+  else if (action === 'backspace') backspace();
+  else if (action === 'sign') toggleSign();
+}
+
+keysEl.addEventListener('click', handleKeysClick);
+
+langEl.addEventListener('change', () => {
+  applyLanguage(langEl.value);
+});
+
+// Keyboard support
+window.addEventListener('keydown', (e) => {
+  const k = e.key;
+
+  if (k >= '0' && k <= '9') {
+    e.preventDefault();
+    inputDigit(k);
+    return;
+  }
+
+  if (k === '.') {
+    e.preventDefault();
+    inputDot();
+    return;
+  }
+
+  if (k === 'Enter' || k === '=') {
+    e.preventDefault();
+    equals();
+    return;
+  }
+
+  if (k === 'Backspace') {
+    e.preventDefault();
+    backspace();
+    return;
+  }
+
+  if (k === 'Escape') {
+    e.preventDefault();
+    clearAll();
+    return;
+  }
+
+  if (k === '+' || k === '-' || k === '*' || k === '/') {
+    e.preventDefault();
+    chooseOp(k);
+    return;
+  }
+
+  if (k === 'x' || k === 'X') {
+    e.preventDefault();
+    chooseOp('*');
+    return;
+  }
+});
+
+// Init
+applyLanguage(langEl.value || 'en');
+clearAll();
+If you still have root-level index.html, style.css, and script.js, you can delete them or ignore them—this app uses the /public versions. Click the Run button to start your app.

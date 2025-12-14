@@ -613,81 +613,93 @@ Keep responses concise but complete. Focus on delivering working code quickly.`,
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`ai-message ${
-              message.role === 'user' ? 'flex justify-end' : ''
-            }`}
-          >
+        {messages.map((message, idx) => {
+          const isLastAssistant = message.role === 'assistant' && idx === messages.length - 1;
+          const hasFileEdits = activities.some(a => a.type === 'edited');
+          const hasError = activities.some(a => a.type === 'error');
+          const hasCodeBlocks = message.content.includes('```');
+          const shouldHideMessage = isLastAssistant && hasFileEdits && activities.length > 0 && !hasError && hasCodeBlocks;
+          
+          if (shouldHideMessage) {
+            return null;
+          }
+          
+          return (
             <div
-              className={`max-w-[90%] rounded-xl p-3 ${
-                message.role === 'user'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-800 text-gray-100'
+              key={message.id}
+              className={`ai-message ${
+                message.role === 'user' ? 'flex justify-end' : ''
               }`}
             >
-              <div className="flex items-center gap-2 mb-2">
-                {message.role === 'assistant' ? (
-                  <Sparkles className="w-4 h-4 text-purple-400" />
-                ) : (
-                  <User className="w-4 h-4" />
-                )}
-                <span className="text-xs opacity-70">
-                  {message.role === 'assistant' ? 'AI Assistant' : 'You'}
-                </span>
-              </div>
-              
-              <div className="prose prose-invert prose-sm max-w-none">
-                <ReactMarkdown
-                  components={{
-                    code({ node, inline, className, children, ...props }: {
-                      node?: unknown;
-                      inline?: boolean;
-                      className?: string;
-                      children?: ReactNode;
-                    }) {
-                      const match = /language-(\w+)/.exec(className || '');
-                      const codeString = String(children).replace(/\n$/, '');
-                      
-                      if (!inline && match) {
-                        return (
-                          <div className="relative group">
-                            <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button
-                                onClick={() => copyToClipboard(codeString, message.id + match[1])}
-                                className="p-1.5 bg-gray-700 rounded hover:bg-gray-600 transition-colors"
-                              >
-                                {copiedId === message.id + match[1] ? (
-                                  <Check className="w-4 h-4 text-green-400" />
-                                ) : (
-                                  <Copy className="w-4 h-4 text-gray-300" />
-                                )}
-                              </button>
+              <div
+                className={`max-w-[90%] rounded-xl p-3 ${
+                  message.role === 'user'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-800 text-gray-100'
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  {message.role === 'assistant' ? (
+                    <Sparkles className="w-4 h-4 text-purple-400" />
+                  ) : (
+                    <User className="w-4 h-4" />
+                  )}
+                  <span className="text-xs opacity-70">
+                    {message.role === 'assistant' ? 'AI Assistant' : 'You'}
+                  </span>
+                </div>
+                
+                <div className="prose prose-invert prose-sm max-w-none">
+                  <ReactMarkdown
+                    components={{
+                      code({ node, inline, className, children, ...props }: {
+                        node?: unknown;
+                        inline?: boolean;
+                        className?: string;
+                        children?: ReactNode;
+                      }) {
+                        const match = /language-(\w+)/.exec(className || '');
+                        const codeString = String(children).replace(/\n$/, '');
+                        
+                        if (!inline && match) {
+                          return (
+                            <div className="relative group">
+                              <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                  onClick={() => copyToClipboard(codeString, message.id + match[1])}
+                                  className="p-1.5 bg-gray-700 rounded hover:bg-gray-600 transition-colors"
+                                >
+                                  {copiedId === message.id + match[1] ? (
+                                    <Check className="w-4 h-4 text-green-400" />
+                                  ) : (
+                                    <Copy className="w-4 h-4 text-gray-300" />
+                                  )}
+                                </button>
+                              </div>
+                              <pre className="bg-gray-900 rounded-lg p-3 overflow-x-auto">
+                                <code className={className} {...props}>
+                                  {children}
+                                </code>
+                              </pre>
                             </div>
-                            <pre className="bg-gray-900 rounded-lg p-3 overflow-x-auto">
-                              <code className={className} {...props}>
-                                {children}
-                              </code>
-                            </pre>
-                          </div>
+                          );
+                        }
+                        
+                        return (
+                          <code className="bg-gray-700 px-1 py-0.5 rounded text-sm" {...props}>
+                            {children}
+                          </code>
                         );
-                      }
-                      
-                      return (
-                        <code className="bg-gray-700 px-1 py-0.5 rounded text-sm" {...props}>
-                          {children}
-                        </code>
-                      );
-                    },
-                  }}
-                >
-                  {message.content}
-                </ReactMarkdown>
+                      },
+                    }}
+                  >
+                    {message.content}
+                  </ReactMarkdown>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         
         {activities.length > 0 && (
           <div className="ai-message">
