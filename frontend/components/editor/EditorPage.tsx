@@ -12,6 +12,7 @@ import {
   Files,
   FolderOpen,
   GitBranch,
+  Home,
   Loader2,
   LogOut,
   PanelLeftClose,
@@ -733,13 +734,17 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
       {/* Top Header Bar - Replit Style */}
       <header className="h-12 bg-[#161b22] border-b border-[#30363d] flex items-center justify-between px-3 flex-shrink-0">
         <div className="flex items-center gap-3">
-          {/* Logo */}
-          <div className="flex items-center gap-2 pr-3 border-r border-[#30363d]">
+          {/* Logo - Clickable to go home */}
+          <button
+            onClick={() => window.location.href = '/'}
+            className="flex items-center gap-2 pr-3 border-r border-[#30363d] hover:opacity-80 transition-opacity"
+            title="Go to home"
+          >
             <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
               <Zap className="w-4 h-4 text-white" />
             </div>
             <span className="font-semibold text-white text-sm hidden sm:block">FinalCode</span>
-          </div>
+          </button>
 
           {/* Project Dropdown */}
           <button
