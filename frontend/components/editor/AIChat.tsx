@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
 import { Send, Loader2, Sparkles, User, Copy, Check, Wand2, Paperclip, X as XIcon } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import AgentActivityLog, { type ActivityStep, type TaskProgress, useAgentActivityLog } from './AgentActivityLog';
 
 interface Message {
   id: string;
@@ -87,6 +88,18 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
   const terminalOutputRef = useRef<string[]>([]);
   const pendingAutoFixRef = useRef<string | null>(null);
   const autoFixAttemptRef = useRef(0);
+
+  // Agent Activity Log
+  const {
+    activities,
+    taskProgress,
+    isThinking,
+    addActivity,
+    clearActivities,
+    updateTaskProgress,
+    startThinking,
+    stopThinking,
+  } = useAgentActivityLog();
 
   // Sync terminal output to ref for access in callbacks
   useEffect(() => {
@@ -192,6 +205,22 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
+    
+    // Clear previous activities and start new task
+    clearActivities();
+    updateTaskProgress({
+      currentTask: 1,
+      totalTasks: 4,
+      taskName: 'Processing your request',
+      tasks: [
+        { id: '1', name: 'Analyze request', status: 'in_progress' },
+        { id: '2', name: 'Review project files', status: 'pending' },
+        { id: '3', name: 'Generate code', status: 'pending' },
+        { id: '4', name: 'Apply changes', status: 'pending' },
+      ],
+    });
+    
+    addActivity({ type: 'planned', title: 'Analyzing your request' });
     onStatusChange?.('Thinking through your request and reviewing the project files...');
 
     // Save user message to database (best-effort)
@@ -214,6 +243,27 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
       }
 
       const settings = loadAISettings();
+      
+      // Update task progress
+      updateTaskProgress({
+        currentTask: 2,
+        totalTasks: 4,
+        taskName: 'Processing your request',
+        tasks: [
+          { id: '1', name: 'Analyze request', status: 'completed' },
+          { id: '2', name: 'Review project files', status: 'in_progress' },
+          { id: '3', name: 'Generate code', status: 'pending' },
+          { id: '4', name: 'Apply changes', status: 'pending' },
+        ],
+      });
+
+      // Add activity for checking files
+      const fileCount = Object.keys(currentFiles).length;
+      addActivity({ 
+        type: 'checked', 
+        title: `Reviewed ${fileCount} project file${fileCount !== 1 ? 's' : ''}`,
+        description: Object.keys(currentFiles).slice(0, 5).join(', ') + (fileCount > 5 ? '...' : '')
+      });
 
       const filesContext = Object.entries(currentFiles)
         .map(([name, content]) => `### ${name}\n\`\`\`\n${content}\n\`\`\``)
@@ -222,6 +272,22 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
       const userPrompt = `Current project files:\n${filesContext}\n\nUser request: ${userMessageText}\n\nPlease help with this request. If generating new code, provide complete files that can replace the current ones.`;
 
       let responseText = '';
+      
+      // Update task progress for AI call
+      updateTaskProgress({
+        currentTask: 3,
+        totalTasks: 4,
+        taskName: 'Processing your request',
+        tasks: [
+          { id: '1', name: 'Analyze request', status: 'completed' },
+          { id: '2', name: 'Review project files', status: 'completed' },
+          { id: '3', name: 'Generate code', status: 'in_progress' },
+          { id: '4', name: 'Apply changes', status: 'pending' },
+        ],
+      });
+      
+      startThinking();
+      addActivity({ type: 'decided', title: `Using ${settings.provider === 'anthropic' ? 'Claude' : 'OpenAI'} to generate response` });
 
       if (settings.mode === 'managed') {
         const { callManagedAI } = await import('@/lib/ai/managedClient');
@@ -271,6 +337,9 @@ Keep responses concise but complete. Focus on delivering working code quickly.`,
         });
       }
 
+      stopThinking();
+      addActivity({ type: 'reviewed', title: 'AI response received' });
+
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
@@ -318,7 +387,30 @@ Keep responses concise but complete. Focus on delivering working code quickly.`,
 
       const newFiles = { ...currentFiles, ...extractedFiles };
       
+      // Update task progress for applying changes
+      updateTaskProgress({
+        currentTask: 4,
+        totalTasks: 4,
+        taskName: 'Processing your request',
+        tasks: [
+          { id: '1', name: 'Analyze request', status: 'completed' },
+          { id: '2', name: 'Review project files', status: 'completed' },
+          { id: '3', name: 'Generate code', status: 'completed' },
+          { id: '4', name: 'Apply changes', status: 'in_progress' },
+        ],
+      });
+
       if (Object.keys(extractedFiles).length >= 2) {
+        // Add activity for each edited file (keep full content for expandable view)
+        for (const filePath of Object.keys(extractedFiles)) {
+          addActivity({ 
+            type: 'edited', 
+            title: filePath,
+            filePath,
+            fileContent: extractedFiles[filePath]
+          });
+        }
+        
         onStatusChange?.(isFullstack 
           ? 'Applying fullstack project files...' 
           : 'Applying generated updates across your project files...');
@@ -339,6 +431,7 @@ Keep responses concise but complete. Focus on delivering working code quickly.`,
         onReplaceAllFiles(newFiles);
       } else if (codeBlocks.length > 0) {
         const mainCode = codeBlocks[codeBlocks.length - 1];
+        addActivity({ type: 'edited', title: `Updated ${mainCode.language || 'code'}` });
         onStatusChange?.(`Updating ${mainCode.language || 'code'} to match your request...`);
         onCodeGenerated(mainCode.code, mainCode.language);
       }
@@ -387,6 +480,19 @@ Keep responses concise but complete. Focus on delivering working code quickly.`,
 
     } catch (error: any) {
       console.error('Chat error:', error);
+      stopThinking();
+      addActivity({ type: 'error', title: `Error: ${error?.message || 'Unknown error'}` });
+      updateTaskProgress({
+        currentTask: 4,
+        totalTasks: 4,
+        taskName: 'Processing your request',
+        tasks: [
+          { id: '1', name: 'Analyze request', status: 'completed' },
+          { id: '2', name: 'Review project files', status: 'completed' },
+          { id: '3', name: 'Generate code', status: 'completed' },
+          { id: '4', name: 'Apply changes', status: 'completed' },
+        ],
+      });
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
@@ -403,11 +509,24 @@ Keep responses concise but complete. Focus on delivering working code quickly.`,
 
     } finally {
       setIsLoading(false);
+      stopThinking();
       if (!hadError) {
+        addActivity({ type: 'checked', title: 'All changes applied successfully' });
+        updateTaskProgress({
+          currentTask: 4,
+          totalTasks: 4,
+          taskName: 'Processing your request',
+          tasks: [
+            { id: '1', name: 'Analyze request', status: 'completed' },
+            { id: '2', name: 'Review project files', status: 'completed' },
+            { id: '3', name: 'Generate code', status: 'completed' },
+            { id: '4', name: 'Apply changes', status: 'completed' },
+          ],
+        });
         onStatusChange?.('Idle — ready for your next request');
       }
     }
-  }, [input, isLoading, currentFiles, onCodeGenerated, onReplaceAllFiles, onStatusChange, projectId]);
+  }, [input, isLoading, currentFiles, onCodeGenerated, onReplaceAllFiles, onStatusChange, projectId, addActivity, clearActivities, updateTaskProgress, startThinking, stopThinking]);
 
   // Handle key press
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -570,12 +689,14 @@ Keep responses concise but complete. Focus on delivering working code quickly.`,
           </div>
         ))}
         
-        {isLoading && (
+        {isLoading && activities.length > 0 && (
           <div className="ai-message">
-            <div className="bg-gray-800 rounded-xl p-4 flex items-center gap-3">
-              <Loader2 className="w-5 h-5 text-purple-400 animate-spin" />
-              <span className="text-gray-300">Generating code<span className="loading-dots"></span></span>
-            </div>
+            <AgentActivityLog
+              activities={activities}
+              taskProgress={taskProgress || undefined}
+              isThinking={isThinking}
+              maxVisibleItems={5}
+            />
           </div>
         )}
         
