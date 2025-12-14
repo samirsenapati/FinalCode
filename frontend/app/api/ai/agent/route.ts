@@ -198,6 +198,7 @@ export async function POST(request: NextRequest) {
     if (!message) return jsonError('Missing message');
 
     let files: FileMap = body.currentFiles ?? {};
+    const conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = body.history ?? [];
     const validProviders: Provider[] = ['openai', 'anthropic', 'deepseek', 'groq'];
     const provider: Provider = validProviders.includes(body.provider as Provider) ? (body.provider as Provider) : 'openai';
     const defaultModels: Record<Provider, string> = {
@@ -259,14 +260,21 @@ export async function POST(request: NextRequest) {
 
     const isOpenAICompatible = provider === 'openai' || provider === 'deepseek' || provider === 'groq';
     
+    const historyMessages = conversationHistory.map(msg => ({
+      role: msg.role,
+      content: msg.content,
+    }));
+
     let messages: any[];
     if (isOpenAICompatible) {
       messages = [
         { role: 'system', content: AGENT_SYSTEM_PROMPT },
+        ...historyMessages,
         { role: 'user', content: initialUserMessage },
       ];
     } else {
       messages = [
+        ...historyMessages,
         { role: 'user', content: initialUserMessage },
       ];
     }

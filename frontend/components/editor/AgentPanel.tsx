@@ -49,6 +49,11 @@ const TOOL_LABELS: Record<string, string> = {
   task_complete: 'Task complete',
 };
 
+interface HistoryMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 export default function AgentPanel({
   files,
   onFilesChange,
@@ -61,10 +66,11 @@ export default function AgentPanel({
   const [isLoading, setIsLoading] = useState(false);
   const [steps, setSteps] = useState<AgentStep[]>([]);
   const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
+  const [history, setHistory] = useState<HistoryMessage[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Load AI settings from localStorage
-  const [aiSettings, setAiSettings] = useState<{ provider: 'openai' | 'anthropic'; model: string }>({
+  const [aiSettings, setAiSettings] = useState<{ provider: 'openai' | 'anthropic' | 'deepseek' | 'groq'; model: string }>({
     provider: 'anthropic',
     model: 'claude-opus-4-5-20251101',
   });
@@ -133,6 +139,7 @@ export default function AgentPanel({
           currentFiles: files,
           provider: aiSettings.provider,
           model: aiSettings.model,
+          history: history,
         }),
       });
 
@@ -148,9 +155,22 @@ export default function AgentPanel({
 
       setSteps(prev => prev.filter(s => s.type !== 'thinking'));
 
+      const assistantResponses: string[] = [];
       for (const event of data.events) {
         processEvent(event);
+        if (event.type === 'text' && event.content) {
+          assistantResponses.push(event.content);
+        }
+        if (event.type === 'complete' && event.summary) {
+          assistantResponses.push(event.summary);
+        }
       }
+
+      setHistory(prev => [
+        ...prev,
+        { role: 'user', content: userMessage },
+        { role: 'assistant', content: assistantResponses.join('\n\n') || 'Task completed.' },
+      ]);
 
       if (data.files && Object.keys(data.files).length > 0) {
         // Merge updated files with existing files (preserve any client-only edits)
