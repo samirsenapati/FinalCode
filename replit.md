@@ -72,8 +72,10 @@ Preferred communication style: Simple, everyday language.
 **Supported Providers:**
 - OpenAI (GPT-5.2, GPT-4.1, GPT-4.1 Mini, GPT-4o)
 - Anthropic (Claude Opus 4.5, Claude Sonnet 4, Claude 3.5 Sonnet, Claude 3.5 Haiku)
+- DeepSeek (DeepSeek-V3, DeepSeek Coder, DeepSeek Reasoner) - GPT-4 level at 10x lower cost
+- Groq (Llama 3.3 70B, Llama 3.1 8B, Mixtral 8x7B, Gemma 2 9B) - Ultra-fast inference
 
-Settings and API keys for BYOK mode are stored client-side in localStorage (`finalcode:ai_settings_v2`).
+Settings and API keys for BYOK mode are stored client-side in localStorage (`finalcode:ai_settings_v3`).
 
 ### Data Storage
 
