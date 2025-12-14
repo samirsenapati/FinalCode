@@ -61,11 +61,17 @@ Preferred communication style: Simple, everyday language.
 
 **Dual-Mode Architecture:**
 1. **Managed Mode (default):** Server-side API keys with per-user rate limits and daily caps
-2. **BYOK Mode (optional):** User-provided keys stored only in browser localStorage
+2. **BYOK Mode (optional):** User-provided keys stored only in browser localStorage - keys never leave the browser
+
+**BYOK Setup Features (Dec 2025):**
+- Step-by-step setup guides with direct links to API key dashboards
+- Client-side format validation (checks key format without sending to server)
+- Cost estimates per model (~$0.001 to ~$0.05 per request)
+- Privacy-first design: API keys stored only in localStorage
 
 **Supported Providers:**
-- OpenAI (GPT-5.2, GPT-4.1, GPT-4o)
-- Anthropic (Claude Opus 4.5, Claude Sonnet 4, Claude 3.5 Sonnet/Haiku)
+- OpenAI (GPT-5.2, GPT-4.1, GPT-4.1 Mini, GPT-4o)
+- Anthropic (Claude Opus 4.5, Claude Sonnet 4, Claude 3.5 Sonnet, Claude 3.5 Haiku)
 
 Settings and API keys for BYOK mode are stored client-side in localStorage (`finalcode:ai_settings_v2`).
 
