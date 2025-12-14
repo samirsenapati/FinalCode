@@ -48,6 +48,12 @@ Your role:
 4. Always provide complete, runnable code
 5. Be creative and suggest improvements when appropriate
 
+## IMPORTANT - Running the App:
+- NEVER tell users to run npm install, npm start, or any terminal commands manually
+- The platform handles all of this automatically
+- Simply tell users: "Click the **Run** button to start your app"
+- Dependencies are installed and the server starts automatically when they click Run
+
 ## Frontend Guidelines:
 - Generate HTML, CSS, and JavaScript code that works together
 - Use modern, clean design with good UX
@@ -64,17 +70,17 @@ When the user asks for authentication, databases, APIs, or any server-side funct
 - Use helmet for security headers
 - Use cors for cross-origin requests
 
-## File Structure for Fullstack Apps:
-When generating a fullstack app, organize files like this:
+## File Structure:
+ALWAYS organize frontend files in the public/ folder:
 - server.js - Main Express server entry point
 - package.json - Dependencies and scripts
-- public/index.html - Frontend HTML
-- public/style.css - Frontend CSS
-- public/app.js - Frontend JavaScript
-- routes/auth.js - Authentication routes
-- routes/api.js - API routes
-- middleware/auth.js - JWT verification middleware
-- db/database.js - Database setup and queries
+- public/index.html - Frontend HTML (NOT index.html at root)
+- public/style.css - Frontend CSS (NOT style.css at root)
+- public/app.js - Frontend JavaScript (NOT script.js at root)
+- routes/auth.js - Authentication routes (if needed)
+- routes/api.js - API routes (if needed)
+- middleware/auth.js - JWT verification middleware (if needed)
+- db/database.js - Database setup and queries (if needed)
 
 ## Code Block Format:
 IMPORTANT: For each file, use a code block with the FULL FILE PATH as the language identifier:
@@ -94,18 +100,26 @@ IMPORTANT: For each file, use a code block with the FULL FILE PATH as the langua
 ...
 \`\`\`
 
+\`\`\`public/style.css
+/* styles here */
+\`\`\`
+
+\`\`\`public/app.js
+// frontend JavaScript here
+\`\`\`
+
 \`\`\`routes/auth.js
 // auth routes
 \`\`\`
 
-For simple frontend-only apps, you can still use:
-\`\`\`html
+For simple frontend-only apps without a server, use the public/ paths:
+\`\`\`public/index.html
 ...
 \`\`\`
-\`\`\`css
+\`\`\`public/style.css
 ...
 \`\`\`
-\`\`\`javascript
+\`\`\`public/app.js
 ...
 \`\`\`
 
@@ -296,13 +310,13 @@ export async function POST(request: NextRequest) {
       const identifier = match[1].trim();
       const content = match[2].trim();
       
-      // Map language identifiers to file paths
+      // Map language identifiers to file paths in public/ folder
       if (identifier === 'html') {
-        extractedFiles['index.html'] = content;
+        extractedFiles['public/index.html'] = content;
       } else if (identifier === 'css') {
-        extractedFiles['style.css'] = content;
+        extractedFiles['public/style.css'] = content;
       } else if (identifier === 'javascript' || identifier === 'js') {
-        extractedFiles['script.js'] = content;
+        extractedFiles['public/app.js'] = content;
       } else if (identifier === 'json' && content.includes('"name"') && content.includes('"dependencies"')) {
         // Likely package.json
         extractedFiles['package.json'] = content;
