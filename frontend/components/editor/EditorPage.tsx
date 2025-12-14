@@ -21,11 +21,9 @@ import {
   RefreshCw,
   Search,
   Settings,
-  Sparkles,
   Terminal as TerminalIcon,
   Upload,
   X,
-  Zap,
   RotateCcw,
 } from 'lucide-react';
 import { signOut } from '@/app/actions/auth';
@@ -767,9 +765,7 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
             className="flex items-center gap-2 pr-3 border-r border-[#30363d] hover:opacity-80 transition-opacity"
             title="Go to home"
           >
-            <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-              <Zap className="w-4 h-4 text-white" />
-            </div>
+            <img src="/favicon.png" alt="FinalCode" className="w-7 h-7" />
             <span className="font-semibold text-white text-sm hidden sm:block">FinalCode</span>
           </button>
 
@@ -854,9 +850,7 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
         <div className="w-[50%] flex flex-col bg-[#0d1117] border-r border-[#21262d]">
           {/* AI Status Header */}
           <div className="px-4 py-3 border-b border-[#21262d] bg-[#0b0f14] flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center flex-shrink-0">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
+            <img src="/favicon.png" alt="FinalCode AI" className="w-10 h-10 flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-white">{activeProjectName || 'FinalCode'}</p>
               <p className="text-xs text-[#8b949e] truncate" title={agentStatus}>

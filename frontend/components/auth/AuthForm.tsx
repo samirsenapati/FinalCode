@@ -49,7 +49,10 @@ export default function AuthForm({
     <div className="min-h-screen bg-editor-bg flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md bg-editor-sidebar border border-editor-border rounded-xl shadow-lg p-8 space-y-6">
         <div className="text-center space-y-2">
-          <h1 className="text-2xl font-bold text-white">Welcome to FinalCode</h1>
+          <h1 className="text-2xl font-bold text-white flex items-center justify-center gap-2">
+            <img src="/favicon.png" alt="FinalCode" className="w-7 h-7" />
+            Welcome to FinalCode
+          </h1>
           <p className="text-sm text-gray-400">
             {mode === 'signin'
               ? 'Sign in to continue building with AI.'

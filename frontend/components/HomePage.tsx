@@ -8,7 +8,6 @@ import {
   Clock,
   FolderOpen,
   LogOut,
-  Sparkles,
 } from 'lucide-react';
 import { signOut } from '@/app/actions/auth';
 import ProjectModal from '@/components/editor/ProjectModal';
@@ -170,7 +169,7 @@ export default function HomePage({ userEmail }: { userEmail?: string }) {
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
-              <Sparkles className="w-6 h-6 text-blue-400" />
+              <img src="/favicon.png" alt="FinalCode" className="w-7 h-7" />
               FinalCode
             </h1>
             <p className="text-sm text-[#8b949e]">{userEmail}</p>
