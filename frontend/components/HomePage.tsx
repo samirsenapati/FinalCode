@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { signOut } from '@/app/actions/auth';
 import ProjectModal from '@/components/editor/ProjectModal';
+import GitHubImportModal from '@/components/GitHubImportModal';
 import { safeProjectName, setLastProjectId } from '@/lib/projects/storage';
 import {
   createProject,
@@ -56,7 +57,9 @@ export default function HomePage({ userEmail }: { userEmail?: string }) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [showProjectModal, setShowProjectModal] = useState(false);
+  const [showGitHubImportModal, setShowGitHubImportModal] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
 
   const loadProjects = useCallback(async () => {
     try {
@@ -103,6 +106,43 @@ export default function HomePage({ userEmail }: { userEmail?: string }) {
     [router]
   );
 
+
+  const handleGitHubImport = useCallback(
+    async (repo: string, branch: string, token: string) => {
+      try {
+        const res = await fetch('/api/github/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'pull',
+            repo,
+            branch,
+            token,
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data?.error || 'Failed to import repository');
+        }
+
+        const files = data?.files || {};
+        const { project } = await createProject({
+          name: safeProjectName(repo.split('/')[1] || 'imported-project'),
+          description: `Imported from ${repo}`,
+          initialFiles: files,
+        });
+
+        setLastProjectId(project.id);
+        setShowGitHubImportModal(false);
+        router.push('/editor');
+      } catch (error: any) {
+        setImportError(error?.message || 'Failed to import from GitHub');
+        throw error;
+      }
+    },
+    [router]
+  );
 
   const handleSignOut = useCallback(async () => {
     setSigningOut(true);
@@ -160,13 +200,13 @@ export default function HomePage({ userEmail }: { userEmail?: string }) {
           </button>
 
           <button
-            disabled
-            className="flex items-center gap-3 p-6 rounded-lg bg-gradient-to-r from-green-500/10 to-cyan-500/10 border border-green-500/30 opacity-50"
+            onClick={() => setShowGitHubImportModal(true)}
+            className="flex items-center gap-3 p-6 rounded-lg bg-gradient-to-r from-green-500/10 to-cyan-500/10 border border-green-500/30 hover:border-green-500/60 transition-all"
           >
             <GitBranch className="w-6 h-6 text-green-400" />
             <div className="text-left">
               <div className="font-semibold">Import from GitHub</div>
-              <div className="text-sm text-[#8b949e]">Coming soon</div>
+              <div className="text-sm text-[#8b949e]">Sync a repository</div>
             </div>
           </button>
         </div>
@@ -240,6 +280,15 @@ export default function HomePage({ userEmail }: { userEmail?: string }) {
           }}
         />
       )}
+
+      <GitHubImportModal
+        open={showGitHubImportModal}
+        onClose={() => {
+          setShowGitHubImportModal(false);
+          setImportError(null);
+        }}
+        onImport={handleGitHubImport}
+      />
     </div>
   );
 }
