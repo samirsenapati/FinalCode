@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
-import { Send, Loader2, Sparkles, User, Copy, Check, Wand2 } from 'lucide-react';
+import { Send, Loader2, Sparkles, User, Copy, Check, Wand2, Paperclip, X as XIcon } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 interface Message {
@@ -79,9 +79,11 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [isAutoFixing, setIsAutoFixing] = useState(false);
+  const [attachedFiles, setAttachedFiles] = useState<Array<{ name: string; size: string }>>([]);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const terminalOutputRef = useRef<string[]>([]);
   const pendingAutoFixRef = useRef<string | null>(null);
   const autoFixAttemptRef = useRef(0);
@@ -421,6 +423,27 @@ Keep responses concise but complete. Focus on delivering working code quickly.`,
     inputRef.current?.focus();
   };
 
+  // Handle file attachment
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.currentTarget.files;
+    if (files) {
+      const newFiles = Array.from(files).map(file => ({
+        name: file.name,
+        size: file.size > 1024 ? `${(file.size / 1024).toFixed(1)}KB` : `${file.size}B`
+      }));
+      setAttachedFiles(prev => [...prev, ...newFiles]);
+    }
+    // Reset input so same file can be selected again
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Remove attached file
+  const removeAttachedFile = (index: number) => {
+    setAttachedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
   const settingsSnapshot = (() => {
     try {
       return loadAISettings();
@@ -582,6 +605,24 @@ Keep responses concise but complete. Focus on delivering working code quickly.`,
 
       {/* Input */}
       <div className="p-4 border-t border-editor-border">
+        {/* Attached Files */}
+        {attachedFiles.length > 0 && (
+          <div className="mb-2 flex flex-wrap gap-2">
+            {attachedFiles.map((file, idx) => (
+              <div key={idx} className="bg-gray-700 rounded-lg px-3 py-1.5 text-xs text-gray-200 flex items-center gap-2">
+                <Paperclip className="w-3 h-3" />
+                <span>{file.name} ({file.size})</span>
+                <button
+                  onClick={() => removeAttachedFile(idx)}
+                  className="hover:text-white ml-1"
+                  title="Remove"
+                >
+                  <XIcon className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="flex gap-2">
           <textarea
             ref={inputRef}
@@ -594,19 +635,37 @@ Keep responses concise but complete. Focus on delivering working code quickly.`,
             disabled={isLoading}
             data-testid="ai-chat-input"
           />
-          <button
-            onClick={sendMessage}
-            disabled={!input.trim() || isLoading}
-            className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white p-3 rounded-xl transition-colors self-end"
-            data-testid="ai-chat-send-button"
-          >
-            {isLoading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <Send className="w-5 h-5" />
-            )}
-          </button>
+          <div className="flex flex-col gap-2 self-end">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isLoading}
+              className="bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-white p-3 rounded-xl transition-colors"
+              title="Attach files"
+            >
+              <Paperclip className="w-5 h-5" />
+            </button>
+            <button
+              onClick={sendMessage}
+              disabled={!input.trim() || isLoading}
+              className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white p-3 rounded-xl transition-colors"
+              data-testid="ai-chat-send-button"
+            >
+              {isLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Send className="w-5 h-5" />
+              )}
+            </button>
+          </div>
         </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          onChange={handleFileSelect}
+          className="hidden"
+          accept="*/*"
+        />
         <p className="text-xs text-gray-500 mt-2 text-center">
           Press Enter to send • Shift+Enter for new line
         </p>
