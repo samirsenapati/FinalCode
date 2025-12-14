@@ -53,10 +53,22 @@ function parseRepo(repo: string) {
 async function pullRepository({ repo, branch, token }: { repo: string; branch: string; token: string }) {
   const { owner, name } = parseRepo(repo);
 
-  const branchData = await fetchJson(`https://api.github.com/repos/${owner}/${name}/branches/${branch}`, token);
+  const branchRes = await fetch(`https://api.github.com/repos/${owner}/${name}/branches/${branch}`, {
+    headers: githubHeaders(token),
+  });
+
+  if (!branchRes.ok) {
+    if (branchRes.status === 404) {
+      throw new Error(`Branch "${branch}" not found. The repository may be empty - try pushing first to create the branch.`);
+    }
+    const errData = await branchRes.json().catch(() => ({}));
+    throw new Error(errData?.message || `Failed to fetch branch (${branchRes.status})`);
+  }
+
+  const branchData = await branchRes.json();
   const treeSha = branchData?.commit?.commit?.tree?.sha;
   if (!treeSha) {
-    throw new Error('Unable to resolve repository tree SHA');
+    throw new Error('Repository appears to be empty. Push some files first to initialize it.');
   }
 
   const treeResponse = await fetchJson(
@@ -161,7 +173,24 @@ export async function POST(request: NextRequest) {
 
     if (action === 'fetch') {
       const { owner, name } = parseRepo(repo);
-      const branchData = await fetchJson(`https://api.github.com/repos/${owner}/${name}/branches/${branch}`, token);
+      const branchRes = await fetch(`https://api.github.com/repos/${owner}/${name}/branches/${branch}`, {
+        headers: githubHeaders(token),
+      });
+      
+      if (!branchRes.ok) {
+        if (branchRes.status === 404) {
+          return NextResponse.json({ 
+            success: true, 
+            empty: true,
+            message: 'Repository is empty or branch does not exist yet.',
+            commitsBehind: 0
+          });
+        }
+        const errData = await branchRes.json().catch(() => ({}));
+        throw new Error(errData?.message || `Failed to fetch (${branchRes.status})`);
+      }
+      
+      const branchData = await branchRes.json();
       return NextResponse.json({ 
         success: true, 
         latestCommit: branchData?.commit?.sha?.slice(0, 7),

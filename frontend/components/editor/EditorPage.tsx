@@ -1052,6 +1052,9 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
                         placeholder="ghp_..."
                         className="w-full px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-sm text-white placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff]"
                       />
+                      <p className="text-xs text-[#6e7681] mt-1">
+                        Token needs <span className="text-[#58a6ff]">repo</span> scope (classic) or <span className="text-[#58a6ff]">Contents: Read &amp; Write</span> (fine-grained)
+                      </p>
                     </div>
                     <div>
                       <label className="block text-xs text-[#8b949e] mb-1">Commit Message</label>
