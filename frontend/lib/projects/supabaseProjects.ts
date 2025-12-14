@@ -1,10 +1,12 @@
 import { createClient } from '@/lib/supabase/client';
-import type { FileMap, Project, ProjectFile } from '@/lib/projects/types';
+import type { FileMap, Project, ProjectFile, ChatMessage, ProjectCheckpoint } from '@/lib/projects/types';
 import { normalizeFilesToRows, rowsToFileMap } from '@/lib/projects/storage';
 import { canCreateProject, decrementProjectCount, incrementProjectCount } from '@/lib/usage/trackingClient';
 
 const PROJECTS_TABLE = 'projects';
 const PROJECT_FILES_TABLE = 'project_files';
+const CHAT_MESSAGES_TABLE = 'chat_messages';
+const PROJECT_CHECKPOINTS_TABLE = 'project_checkpoints';
 
 export class ProjectsServiceError extends Error {
   constructor(message: string) {
@@ -168,4 +170,181 @@ export async function deleteProjectFile(projectId: string, path: string): Promis
 
 export function projectFilesToFileMap(projectFiles: ProjectFile[]): FileMap {
   return rowsToFileMap(projectFiles.map((pf) => ({ path: pf.path, content: pf.content })));
+}
+
+// ============================================
+// Chat History Functions
+// ============================================
+
+export async function saveChatMessage(params: {
+  projectId: string;
+  role: 'user' | 'assistant';
+  content: string;
+}): Promise<ChatMessage> {
+  const supabase = requireSupabase();
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) throw new ProjectsServiceError(userError?.message || 'Not authenticated');
+
+  const { data, error } = await supabase
+    .from(CHAT_MESSAGES_TABLE)
+    .insert({
+      project_id: params.projectId,
+      user_id: user.id,
+      role: params.role,
+      content: params.content,
+    })
+    .select('*')
+    .single();
+
+  if (error) throw new ProjectsServiceError(error.message);
+  return data as ChatMessage;
+}
+
+export async function getChatHistory(projectId: string): Promise<ChatMessage[]> {
+  const supabase = requireSupabase();
+
+  const { data, error } = await supabase
+    .from(CHAT_MESSAGES_TABLE)
+    .select('*')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: true });
+
+  if (error) throw new ProjectsServiceError(error.message);
+  return (data ?? []) as ChatMessage[];
+}
+
+export async function clearChatHistory(projectId: string): Promise<void> {
+  const supabase = requireSupabase();
+
+  const { error } = await supabase
+    .from(CHAT_MESSAGES_TABLE)
+    .delete()
+    .eq('project_id', projectId);
+
+  if (error) throw new ProjectsServiceError(error.message);
+}
+
+// ============================================
+// Project Checkpoint Functions
+// ============================================
+
+export async function createCheckpoint(params: {
+  projectId: string;
+  name?: string;
+  description?: string;
+  files: FileMap;
+  chatMessageId?: string;
+}): Promise<ProjectCheckpoint> {
+  const supabase = requireSupabase();
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) throw new ProjectsServiceError(userError?.message || 'Not authenticated');
+
+  const { data, error } = await supabase
+    .from(PROJECT_CHECKPOINTS_TABLE)
+    .insert({
+      project_id: params.projectId,
+      user_id: user.id,
+      name: params.name ?? null,
+      description: params.description ?? null,
+      files: params.files,
+      chat_message_id: params.chatMessageId ?? null,
+    })
+    .select('*')
+    .single();
+
+  if (error) throw new ProjectsServiceError(error.message);
+  return {
+    ...data,
+    files: data.files as FileMap,
+  } as ProjectCheckpoint;
+}
+
+export async function getCheckpoints(projectId: string): Promise<ProjectCheckpoint[]> {
+  const supabase = requireSupabase();
+
+  const { data, error } = await supabase
+    .from(PROJECT_CHECKPOINTS_TABLE)
+    .select('*')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw new ProjectsServiceError(error.message);
+  return (data ?? []).map((row) => ({
+    ...row,
+    files: row.files as FileMap,
+  })) as ProjectCheckpoint[];
+}
+
+export async function getCheckpoint(checkpointId: string): Promise<ProjectCheckpoint | null> {
+  const supabase = requireSupabase();
+
+  const { data, error } = await supabase
+    .from(PROJECT_CHECKPOINTS_TABLE)
+    .select('*')
+    .eq('id', checkpointId)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') return null;
+    throw new ProjectsServiceError(error.message);
+  }
+  return {
+    ...data,
+    files: data.files as FileMap,
+  } as ProjectCheckpoint;
+}
+
+export async function deleteCheckpoint(checkpointId: string): Promise<void> {
+  const supabase = requireSupabase();
+
+  const { error } = await supabase
+    .from(PROJECT_CHECKPOINTS_TABLE)
+    .delete()
+    .eq('id', checkpointId);
+
+  if (error) throw new ProjectsServiceError(error.message);
+}
+
+export async function rollbackToCheckpoint(checkpointId: string): Promise<{ files: FileMap }> {
+  const supabase = requireSupabase();
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) throw new ProjectsServiceError(userError?.message || 'Not authenticated');
+
+  const checkpoint = await getCheckpoint(checkpointId);
+  if (!checkpoint) throw new ProjectsServiceError('Checkpoint not found');
+
+  await upsertProjectFiles(checkpoint.project_id, checkpoint.files);
+
+  const currentFilePaths = Object.keys(checkpoint.files);
+  const { data: existingFiles } = await supabase
+    .from(PROJECT_FILES_TABLE)
+    .select('path')
+    .eq('project_id', checkpoint.project_id);
+
+  if (existingFiles) {
+    const pathsToDelete = existingFiles
+      .map((f) => f.path)
+      .filter((p) => !currentFilePaths.includes(p));
+
+    for (const path of pathsToDelete) {
+      await deleteProjectFile(checkpoint.project_id, path);
+    }
+  }
+
+  return { files: checkpoint.files };
 }

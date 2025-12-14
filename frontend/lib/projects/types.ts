@@ -18,3 +18,23 @@ export type ProjectFile = {
 };
 
 export type FileMap = Record<string, string>;
+
+export type ChatMessage = {
+  id: string;
+  project_id: string;
+  user_id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  created_at: string;
+};
+
+export type ProjectCheckpoint = {
+  id: string;
+  project_id: string;
+  user_id: string;
+  name: string | null;
+  description: string | null;
+  files: FileMap;
+  chat_message_id: string | null;
+  created_at: string;
+};

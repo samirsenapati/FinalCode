@@ -16,6 +16,7 @@ interface AIChatProps {
   onReplaceAllFiles: (files: Record<string, string>) => void;
   currentFiles: Record<string, string>;
   onStatusChange?: (status: string) => void;
+  projectId?: string | null;
 }
 
 import { loadAISettings, getActiveApiKey, AVAILABLE_MODELS } from '@/lib/ai/settings';
@@ -29,22 +30,57 @@ const EXAMPLE_PROMPTS = [
   "Build a task manager with JWT authentication",
 ];
 
-export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFiles, onStatusChange }: AIChatProps) {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content: "Hi! I'm **FinalCode AI**, powered by cutting-edge models like **Claude Opus 4.5** and **GPT-5.2**.\n\nI can build **fullstack applications** with frontend and backend code. Try something like:\n\n- \"Create a todo app with user authentication and database\"\n- \"Build a REST API with Express and JWT authentication\"\n- \"Make a fullstack blog with login system\"\n- \"Create a task manager with SQLite database\"\n\nI generate complete, runnable code including:\n- **Frontend**: HTML, CSS, JavaScript\n- **Backend**: Node.js, Express, SQLite, JWT auth\n\nConfigure your preferred AI model in **AI Settings**.",
-      timestamp: new Date(),
-    }
-  ]);
+const WELCOME_MESSAGE: Message = {
+  id: 'welcome',
+  role: 'assistant',
+  content: "Hi! I'm **FinalCode AI**, powered by cutting-edge models like **Claude Opus 4.5** and **GPT-5.2**.\n\nI can build **fullstack applications** with frontend and backend code. Try something like:\n\n- \"Create a todo app with user authentication and database\"\n- \"Build a REST API with Express and JWT authentication\"\n- \"Make a fullstack blog with login system\"\n- \"Create a task manager with SQLite database\"\n\nI generate complete, runnable code including:\n- **Frontend**: HTML, CSS, JavaScript\n- **Backend**: Node.js, Express, SQLite, JWT auth\n\nConfigure your preferred AI model in **AI Settings**.",
+  timestamp: new Date(),
+};
+
+export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFiles, onStatusChange, projectId }: AIChatProps) {
+  const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
   const [input, setInput] = useState('');
-  // (reserved) could show settings hint inline
   const [isLoading, setIsLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Load chat history from database when projectId changes
+  useEffect(() => {
+    if (!projectId) {
+      setMessages([WELCOME_MESSAGE]);
+      setHistoryLoaded(false);
+      return;
+    }
+
+    const loadHistory = async () => {
+      try {
+        const { getChatHistory } = await import('@/lib/projects/supabaseProjects');
+        const history = await getChatHistory(projectId);
+        
+        if (history.length > 0) {
+          const loadedMessages: Message[] = history.map(msg => ({
+            id: msg.id,
+            role: msg.role,
+            content: msg.content,
+            timestamp: new Date(msg.created_at),
+          }));
+          setMessages([WELCOME_MESSAGE, ...loadedMessages]);
+        } else {
+          setMessages([WELCOME_MESSAGE]);
+        }
+        setHistoryLoaded(true);
+      } catch (error) {
+        console.error('Failed to load chat history:', error);
+        setMessages([WELCOME_MESSAGE]);
+        setHistoryLoaded(true);
+      }
+    };
+
+    loadHistory();
+  }, [projectId]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -96,6 +132,13 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
     setIsLoading(true);
     onStatusChange?.('Thinking through your request and reviewing the project files...');
 
+    // Save user message to database (best-effort)
+    if (projectId) {
+      import('@/lib/projects/supabaseProjects').then(({ saveChatMessage }) => {
+        saveChatMessage({ projectId, role: 'user', content: userMessageText }).catch(console.error);
+      });
+    }
+
     let hadError = false;
 
     try {
@@ -139,6 +182,13 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
 
       setMessages(prev => [...prev, assistantMessage]);
 
+      // Save assistant message to database (best-effort)
+      if (projectId) {
+        import('@/lib/projects/supabaseProjects').then(({ saveChatMessage }) => {
+          saveChatMessage({ projectId, role: 'assistant', content: responseText }).catch(console.error);
+        });
+      }
+
       const codeBlocks = extractCode(responseText);
 
       // Extract files from code blocks - supports both simple and fullstack patterns
@@ -168,11 +218,27 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
         Object.keys(extractedFiles).some(f => f.startsWith('routes/') || f.startsWith('middleware/'))
       );
 
+      const newFiles = { ...currentFiles, ...extractedFiles };
+      
       if (Object.keys(extractedFiles).length >= 2) {
         onStatusChange?.(isFullstack 
           ? 'Applying fullstack project files...' 
           : 'Applying generated updates across your project files...');
-        onReplaceAllFiles({ ...currentFiles, ...extractedFiles });
+        
+        // Create checkpoint before applying changes (best-effort)
+        if (projectId) {
+          import('@/lib/projects/supabaseProjects').then(({ createCheckpoint }) => {
+            const checkpointName = userMessageText.slice(0, 50) + (userMessageText.length > 50 ? '...' : '');
+            createCheckpoint({
+              projectId,
+              name: checkpointName,
+              description: `AI generated ${Object.keys(extractedFiles).length} files`,
+              files: newFiles,
+            }).catch(console.error);
+          });
+        }
+        
+        onReplaceAllFiles(newFiles);
       } else if (codeBlocks.length > 0) {
         const mainCode = codeBlocks[codeBlocks.length - 1];
         onStatusChange?.(`Updating ${mainCode.language || 'code'} to match your request...`);
@@ -204,7 +270,7 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
         onStatusChange?.('Idle — ready for your next request');
       }
     }
-  }, [input, isLoading, currentFiles, onCodeGenerated, onReplaceAllFiles, onStatusChange]);
+  }, [input, isLoading, currentFiles, onCodeGenerated, onReplaceAllFiles, onStatusChange, projectId]);
 
   // Handle key press
   const handleKeyPress = (e: React.KeyboardEvent) => {

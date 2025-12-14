@@ -25,9 +25,11 @@ import {
   Upload,
   X,
   Zap,
+  RotateCcw,
 } from 'lucide-react';
 import { signOut } from '@/app/actions/auth';
 import AIChat from '@/components/editor/AIChat';
+import ChatHistoryPanel from '@/components/editor/ChatHistoryPanel';
 import AISettingsModal from '@/components/editor/AISettingsModal';
 import CodeEditor from '@/components/editor/CodeEditor';
 import FileTree from '@/components/editor/FileTree';
@@ -135,7 +137,7 @@ console.log('FinalCode app loaded');`,
 
 type SidebarTab = 'files' | 'search' | 'git';
 type BottomPanelTab = 'console' | 'terminal';
-type RightPanelTab = 'preview' | 'console' | 'git';
+type RightPanelTab = 'preview' | 'console' | 'git' | 'history';
 
 export default function EditorPage({ userEmail }: EditorPageProps) {
   const [isSigningOut, startSignOut] = useTransition();
@@ -845,6 +847,7 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
               onReplaceAllFiles={handleReplaceAllFiles}
               currentFiles={files}
               onStatusChange={setAgentStatus}
+              projectId={activeProjectId}
             />
           </div>
 
@@ -898,6 +901,20 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
             >
               <GitBranch className="w-3.5 h-3.5" />
               Git
+              <span className="ml-1 p-0.5 hover:bg-[#30363d] rounded opacity-60 hover:opacity-100">
+                <X className="w-3 h-3" />
+              </span>
+            </div>
+            <div
+              onClick={() => setRightPanelTab('history')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded transition-colors cursor-pointer ${
+                rightPanelTab === 'history'
+                  ? 'bg-[#21262d] text-white'
+                  : 'text-[#8b949e] hover:text-white hover:bg-[#161b22]'
+              }`}
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              History
               <span className="ml-1 p-0.5 hover:bg-[#30363d] rounded opacity-60 hover:opacity-100">
                 <X className="w-3 h-3" />
               </span>
@@ -1123,6 +1140,17 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* History Tab */}
+            {rightPanelTab === 'history' && (
+              <div className="h-full bg-[#0d1117]">
+                <ChatHistoryPanel
+                  projectId={activeProjectId}
+                  onRollback={handleReplaceAllFiles}
+                  currentFiles={files}
+                />
               </div>
             )}
           </div>

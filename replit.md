@@ -14,6 +14,8 @@ FinalCode is an AI-powered "vibe coding" platform that allows users to build web
 - Live preview with React/JSX support via Babel
 - In-browser JavaScript execution using WebContainers (npm install, server start)
 - Project persistence via Supabase
+- **Chat history persistence** - AI conversation messages stored in database per project
+- **Project checkpoints/rollback** - Automatic snapshots when AI generates code, with rollback support
 - Subscription billing via Stripe
 - One-click deployment to Cloudflare Pages
 - Replit-style Git panel with GitHub integration (pull, push, fetch, sync)
@@ -67,6 +69,8 @@ Settings and API keys for BYOK mode are stored client-side in localStorage (`fin
 
 **Database:** Supabase (PostgreSQL)
 - Normalized schema with `projects` and `project_files` tables
+- `chat_messages` table for AI conversation history per project
+- `project_checkpoints` table for rollback snapshots with JSONB file storage
 - Row-Level Security (RLS) for user data isolation
 - Subscriptions and usage tracking tables for monetization
 
