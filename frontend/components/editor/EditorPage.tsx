@@ -25,9 +25,12 @@ import {
   Upload,
   X,
   RotateCcw,
+  Sparkles,
+  Bot,
 } from 'lucide-react';
 import { signOut } from '@/app/actions/auth';
 import AIChat from '@/components/editor/AIChat';
+import AgentPanel from '@/components/editor/AgentPanel';
 import ChatHistoryPanel from '@/components/editor/ChatHistoryPanel';
 import AISettingsModal from '@/components/editor/AISettingsModal';
 import CodeEditor from '@/components/editor/CodeEditor';
@@ -185,6 +188,7 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
   // Open files (tabs)
   const [openFiles, setOpenFiles] = useState<string[]>(['index.html']);
   const [agentStatus, setAgentStatus] = useState('Idle — ready for your next request');
+  const [agentMode, setAgentMode] = useState(false);
 
   // Right panel tabs - dynamic tab system
   const [rightPanelTab, setRightPanelTab] = useState<RightPanelTab>('preview');
@@ -869,9 +873,31 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-white">{activeProjectName || 'FinalCode'}</p>
               <p className="text-xs text-[#8b949e] truncate" title={agentStatus}>
-                {agentStatus}
+                {agentMode ? 'Agent Mode — autonomous coding' : agentStatus}
               </p>
             </div>
+            {/* Agent Mode Toggle */}
+            <button
+              onClick={() => setAgentMode(!agentMode)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                agentMode
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-[#21262d] text-[#8b949e] hover:text-white hover:bg-[#30363d]'
+              }`}
+              title={agentMode ? 'Switch to Chat Mode' : 'Switch to Agent Mode'}
+            >
+              {agentMode ? (
+                <>
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Agent
+                </>
+              ) : (
+                <>
+                  <Bot className="w-3.5 h-3.5" />
+                  Chat
+                </>
+              )}
+            </button>
             <button
               onClick={() => setShowAISettings(true)}
               className="p-2 hover:bg-[#21262d] rounded-lg transition-colors"
@@ -883,23 +909,35 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
 
           {/* AI Chat Area */}
           <div className="flex-1 overflow-hidden">
-            <AIChat
-              onCodeGenerated={handleAICodeGenerated}
-              onReplaceAllFiles={handleReplaceAllFiles}
-              currentFiles={files}
-              onStatusChange={setAgentStatus}
-              projectId={activeProjectId}
-              terminalOutput={terminalOutput}
-              onRunApp={handleRun}
-            />
+            {agentMode ? (
+              <AgentPanel
+                files={files}
+                onFilesChange={handleReplaceAllFiles}
+                projectId={activeProjectId ?? undefined}
+                onRunApp={handleRun}
+                terminalOutput={terminalOutput}
+              />
+            ) : (
+              <AIChat
+                onCodeGenerated={handleAICodeGenerated}
+                onReplaceAllFiles={handleReplaceAllFiles}
+                currentFiles={files}
+                onStatusChange={setAgentStatus}
+                projectId={activeProjectId}
+                terminalOutput={terminalOutput}
+                onRunApp={handleRun}
+              />
+            )}
           </div>
 
           {/* Bottom Input Hint */}
-          <div className="px-4 py-2 border-t border-[#21262d] bg-[#0b0f14]">
-            <p className="text-xs text-[#6e7681] text-center">
-              Describe what you want to build and AI will generate the code
-            </p>
-          </div>
+          {!agentMode && (
+            <div className="px-4 py-2 border-t border-[#21262d] bg-[#0b0f14]">
+              <p className="text-xs text-[#6e7681] text-center">
+                Describe what you want to build and AI will generate the code
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Right Panel - Tabbed (Preview, Console, Git, etc.) */}
