@@ -80,7 +80,7 @@ export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFile
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [isAutoFixing, setIsAutoFixing] = useState(false);
-  const [attachedFiles, setAttachedFiles] = useState<Array<{ name: string; size: string }>>([]);
+  const [attachedFiles, setAttachedFiles] = useState<Array<{ name: string; size: string; type?: string; dataUrl?: string }>>([]);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -595,15 +595,54 @@ Keep responses concise but complete. Focus on delivering working code quickly.`,
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.currentTarget.files;
     if (files) {
-      const newFiles = Array.from(files).map(file => ({
-        name: file.name,
-        size: file.size > 1024 ? `${(file.size / 1024).toFixed(1)}KB` : `${file.size}B`
-      }));
-      setAttachedFiles(prev => [...prev, ...newFiles]);
+      Array.from(files).forEach(file => {
+        const fileInfo = {
+          name: file.name,
+          size: file.size > 1024 ? `${(file.size / 1024).toFixed(1)}KB` : `${file.size}B`,
+          type: file.type,
+          dataUrl: undefined as string | undefined
+        };
+        
+        if (file.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            setAttachedFiles(prev => [...prev, { ...fileInfo, dataUrl: event.target?.result as string }]);
+          };
+          reader.readAsDataURL(file);
+        } else {
+          setAttachedFiles(prev => [...prev, fileInfo]);
+        }
+      });
     }
-    // Reset input so same file can be selected again
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
+    }
+  };
+
+  // Handle paste event for images
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (const item of Array.from(items)) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const dataUrl = event.target?.result as string;
+            setAttachedFiles(prev => [...prev, {
+              name: `pasted-image-${Date.now()}.png`,
+              size: file.size > 1024 ? `${(file.size / 1024).toFixed(1)}KB` : `${file.size}B`,
+              type: file.type,
+              dataUrl
+            }]);
+          };
+          reader.readAsDataURL(file);
+        }
+        break;
+      }
     }
   };
 
@@ -791,9 +830,14 @@ Keep responses concise but complete. Focus on delivering working code quickly.`,
         {attachedFiles.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-2">
             {attachedFiles.map((file, idx) => (
-              <div key={idx} className="bg-gray-700 rounded-lg px-3 py-1.5 text-xs text-gray-200 flex items-center gap-2">
-                <Paperclip className="w-3 h-3" />
-                <span>{file.name} ({file.size})</span>
+              <div key={idx} className="bg-gray-700 rounded-lg px-2 py-1.5 text-xs text-gray-200 flex items-center gap-2">
+                {file.dataUrl && file.type?.startsWith('image/') ? (
+                  <img src={file.dataUrl} alt={file.name} className="w-8 h-8 object-cover rounded" />
+                ) : (
+                  <Paperclip className="w-3 h-3" />
+                )}
+                <span className="max-w-[120px] truncate">{file.name}</span>
+                <span className="text-gray-400">({file.size})</span>
                 <button
                   onClick={() => removeAttachedFile(idx)}
                   className="hover:text-white ml-1"
@@ -811,6 +855,7 @@ Keep responses concise but complete. Focus on delivering working code quickly.`,
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyPress}
+            onPaste={handlePaste}
             placeholder="Describe what you want to build..."
             className="flex-1 bg-gray-800 text-white rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 placeholder-gray-500"
             rows={2}
