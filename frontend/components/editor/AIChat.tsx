@@ -20,6 +20,7 @@ interface AIChatProps {
   projectId?: string | null;
   terminalOutput?: string[];
   onRunApp?: () => Promise<void>;
+  settingsKey?: number;
 }
 
 const MAX_AUTO_FIX_ATTEMPTS = 3;
@@ -73,7 +74,7 @@ const WELCOME_MESSAGE: Message = {
   timestamp: new Date(),
 };
 
-export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFiles, onStatusChange, projectId, terminalOutput = [], onRunApp }: AIChatProps) {
+export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFiles, onStatusChange, projectId, terminalOutput = [], onRunApp, settingsKey = 0 }: AIChatProps) {
   const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -674,7 +675,7 @@ Keep responses concise but complete. Focus on delivering working code quickly.`,
       // Keep defaults
     }
     setSettingsLoaded(true);
-  }, []);
+  }, [settingsKey]);
 
   const hasKey = Boolean(getActiveApiKey(settingsSnapshot)?.trim());
 

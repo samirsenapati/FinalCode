@@ -48,6 +48,7 @@ import { buildNodeRunShim, getDefaultRunEntry, isFullstackProject, getServerStar
 import { runNodeScript, writeFilesToWebContainer, installDependencies, startServer, type ServerProcess } from '@/lib/webcontainer/runner';
 import type { FileMap, Project } from '@/lib/projects/types';
 import { clearLastProjectId, getLastProjectId, safeProjectName, setLastProjectId } from '@/lib/projects/storage';
+import { loadAISettings, AVAILABLE_MODELS, type AISettings } from '@/lib/ai/settings';
 import {
   createProject,
   deleteProject,
@@ -169,6 +170,25 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
 
   // Modals
   const [showAISettings, setShowAISettings] = useState(false);
+  const [aiSettingsKey, setAiSettingsKey] = useState(0);
+  const [currentAIModel, setCurrentAIModel] = useState({ provider: 'anthropic', model: 'claude-opus-4-5-20251101' });
+
+  // Load AI settings on mount and when settingsKey changes
+  useEffect(() => {
+    try {
+      const settings = loadAISettings();
+      setCurrentAIModel({ provider: settings.provider, model: settings.model });
+    } catch {
+      // Keep defaults
+    }
+  }, [aiSettingsKey]);
+
+  // Helper to get model label for display
+  const getModelLabel = (provider: string, model: string) => {
+    const models = AVAILABLE_MODELS[provider as keyof typeof AVAILABLE_MODELS] || [];
+    const found = models.find(m => m.value === model);
+    return found?.label || model;
+  };
 
   // Terminal
   const [terminalOutput, setTerminalOutput] = useState<string[]>([
@@ -758,7 +778,10 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
       <AISettingsModal
         open={showAISettings}
         onClose={() => setShowAISettings(false)}
-        onSaved={() => setTerminalOutput((prev) => [...prev, '> AI settings updated', ''])}
+        onSaved={() => {
+          setAiSettingsKey((k) => k + 1);
+          setTerminalOutput((prev) => [...prev, '> AI settings updated', '']);
+        }}
       />
 
       <ProjectModal
@@ -898,12 +921,17 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
                 </>
               )}
             </button>
+            {/* Model Indicator + Settings Button */}
             <button
               onClick={() => setShowAISettings(true)}
-              className="p-2 hover:bg-[#21262d] rounded-lg transition-colors"
-              title="AI Settings"
+              className="flex items-center gap-2 px-3 py-1.5 hover:bg-[#21262d] rounded-lg transition-colors border border-[#30363d]"
+              title="Click to change AI model"
             >
-              <Settings className="w-4 h-4 text-[#8b949e]" />
+              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${currentAIModel.provider === 'anthropic' ? 'bg-orange-400' : 'bg-green-400'}`}></span>
+              <span className="text-xs font-medium text-white truncate max-w-[120px]">
+                {getModelLabel(currentAIModel.provider, currentAIModel.model)}
+              </span>
+              <Settings className="w-3.5 h-3.5 text-[#8b949e] flex-shrink-0" />
             </button>
           </div>
 
@@ -926,6 +954,7 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
                 projectId={activeProjectId}
                 terminalOutput={terminalOutput}
                 onRunApp={handleRun}
+                settingsKey={aiSettingsKey}
               />
             )}
           </div>
