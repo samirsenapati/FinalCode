@@ -34,6 +34,8 @@ import ChatHistoryPanel from '@/components/editor/ChatHistoryPanel';
 import AISettingsModal from '@/components/editor/AISettingsModal';
 import CodeEditor from '@/components/editor/CodeEditor';
 import FileTree from '@/components/editor/FileTree';
+import CodeSearch from '@/components/editor/CodeSearch';
+import AssetUploader from '@/components/editor/AssetUploader';
 import Preview from '@/components/editor/Preview';
 import ProjectModal from '@/components/editor/ProjectModal';
 import Terminal from '@/components/editor/Terminal';
@@ -137,7 +139,7 @@ document.getElementById('demo-btn').addEventListener('click', () => {
 console.log('FinalCode app loaded');`,
 };
 
-type SidebarTab = 'files' | 'search' | 'git';
+type SidebarTab = 'files' | 'search' | 'git' | 'assets';
 type BottomPanelTab = 'console' | 'terminal';
 type RightPanelTab = 'preview' | 'console' | 'git' | 'history' | 'shell' | 'files';
 
@@ -1236,13 +1238,21 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
                     <Plus className="w-4 h-4 text-[#8b949e]" />
                   </button>
                 </div>
-                <div className="flex-1 overflow-hidden">
-                  <FileTree
-                    files={files}
-                    activeFile={activeFile}
-                    onSelectFile={handleSelectFile}
-                    onDeleteFile={handleDeleteFile}
-                  />
+                <div className="flex-1 overflow-hidden flex flex-col">
+                  <div className="flex-shrink-0">
+                    <CodeSearch
+                      files={files}
+                      onSelectFile={handleSelectFile}
+                    />
+                  </div>
+                  <div className="flex-1 overflow-auto">
+                    <FileTree
+                      files={files}
+                      activeFile={activeFile}
+                      onSelectFile={handleSelectFile}
+                      onDeleteFile={handleDeleteFile}
+                    />
+                  </div>
                 </div>
               </div>
             )}
@@ -1253,18 +1263,37 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
         {leftSidebarOpen && (
           <div className="w-60 bg-[#161b22] border-l border-[#30363d] flex flex-col flex-shrink-0">
             <div className="h-10 px-3 flex items-center justify-between border-b border-[#21262d]">
-              <span className="text-xs font-semibold text-[#8b949e] uppercase tracking-wider">Files</span>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={() => {
-                    const name = prompt('Enter filename (e.g., app.js):');
-                    if (name) handleCreateFile(name);
-                  }}
-                  className="p-1 hover:bg-[#21262d] rounded transition-colors"
-                  title="New File"
+                  onClick={() => setSidebarTab('files')}
+                  className={`text-xs font-semibold uppercase tracking-wider px-2 py-1 rounded transition-colors ${
+                    sidebarTab === 'files' ? 'text-[#c9d1d9] bg-[#21262d]' : 'text-[#8b949e] hover:text-[#c9d1d9]'
+                  }`}
                 >
-                  <Plus className="w-4 h-4 text-[#8b949e]" />
+                  Files
                 </button>
+                <button
+                  onClick={() => setSidebarTab('assets')}
+                  className={`text-xs font-semibold uppercase tracking-wider px-2 py-1 rounded transition-colors ${
+                    sidebarTab === 'assets' ? 'text-[#c9d1d9] bg-[#21262d]' : 'text-[#8b949e] hover:text-[#c9d1d9]'
+                  }`}
+                >
+                  Assets
+                </button>
+              </div>
+              <div className="flex items-center gap-1">
+                {sidebarTab === 'files' && (
+                  <button
+                    onClick={() => {
+                      const name = prompt('Enter filename (e.g., app.js):');
+                      if (name) handleCreateFile(name);
+                    }}
+                    className="p-1 hover:bg-[#21262d] rounded transition-colors"
+                    title="New File"
+                  >
+                    <Plus className="w-4 h-4 text-[#8b949e]" />
+                  </button>
+                )}
                 <button
                   onClick={() => setLeftSidebarOpen(false)}
                   className="p-1 hover:bg-[#21262d] rounded transition-colors"
@@ -1274,12 +1303,31 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
                 </button>
               </div>
             </div>
-            <FileTree
-              files={files}
-              activeFile={activeFile}
-              onSelectFile={handleSelectFile}
-              onDeleteFile={handleDeleteFile}
-            />
+            {sidebarTab === 'files' && (
+              <div className="flex-1 flex flex-col overflow-hidden">
+                <div className="flex-shrink-0">
+                  <CodeSearch
+                    files={files}
+                    onSelectFile={handleSelectFile}
+                  />
+                </div>
+                <div className="flex-1 overflow-auto">
+                  <FileTree
+                    files={files}
+                    activeFile={activeFile}
+                    onSelectFile={handleSelectFile}
+                    onDeleteFile={handleDeleteFile}
+                  />
+                </div>
+              </div>
+            )}
+            {sidebarTab === 'assets' && (
+              <AssetUploader
+                onAssetUploaded={(asset) => {
+                  setTerminalOutput((prev) => [...prev, `> Uploaded asset: ${asset.name}`, '']);
+                }}
+              />
+            )}
           </div>
         )}
       </div>
