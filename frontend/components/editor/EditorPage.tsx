@@ -1157,6 +1157,7 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
                   projectId={activeProjectId}
                   onRollback={handleReplaceAllFiles}
                   currentFiles={files}
+                  onSwitchToPreview={() => setRightPanelTab('preview')}
                 />
               </div>
             )}

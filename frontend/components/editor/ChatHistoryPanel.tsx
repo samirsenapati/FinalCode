@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { History, RotateCcw, Clock, FileCode, ChevronDown, ChevronUp, Trash2, Loader2 } from 'lucide-react';
+import { History, RotateCcw, Clock, FileCode, ChevronDown, ChevronUp, Trash2, Loader2, AlertTriangle, X } from 'lucide-react';
 import type { ProjectCheckpoint } from '@/lib/projects/types';
 
 interface ChatHistoryPanelProps {
   projectId: string | null;
   onRollback: (files: Record<string, string>) => void;
   currentFiles: Record<string, string>;
+  onSwitchToPreview?: () => void;
 }
 
 function formatTimeAgo(date: Date): string {
@@ -24,11 +25,12 @@ function formatTimeAgo(date: Date): string {
   return date.toLocaleDateString();
 }
 
-export default function ChatHistoryPanel({ projectId, onRollback, currentFiles }: ChatHistoryPanelProps) {
+export default function ChatHistoryPanel({ projectId, onRollback, currentFiles, onSwitchToPreview }: ChatHistoryPanelProps) {
   const [checkpoints, setCheckpoints] = useState<ProjectCheckpoint[]>([]);
   const [loading, setLoading] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [rollingBack, setRollingBack] = useState<string | null>(null);
+  const [confirmRollback, setConfirmRollback] = useState<ProjectCheckpoint | null>(null);
 
   const loadCheckpoints = useCallback(async () => {
     if (!projectId) {
@@ -56,13 +58,22 @@ export default function ChatHistoryPanel({ projectId, onRollback, currentFiles }
     if (rollingBack) return;
     
     setRollingBack(checkpoint.id);
+    setConfirmRollback(null);
     try {
       onRollback(checkpoint.files);
+      // Switch to preview tab after successful rollback
+      if (onSwitchToPreview) {
+        onSwitchToPreview();
+      }
     } catch (error) {
       console.error('Rollback failed:', error);
     } finally {
       setRollingBack(null);
     }
+  };
+
+  const showConfirmDialog = (checkpoint: ProjectCheckpoint) => {
+    setConfirmRollback(checkpoint);
   };
 
   const handleDelete = async (checkpointId: string) => {
@@ -195,7 +206,7 @@ export default function ChatHistoryPanel({ projectId, onRollback, currentFiles }
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleRollback(checkpoint);
+                        showConfirmDialog(checkpoint);
                       }}
                       disabled={isRollingBack}
                       className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-xs font-medium rounded transition-colors"
@@ -231,6 +242,47 @@ export default function ChatHistoryPanel({ projectId, onRollback, currentFiles }
           );
         })}
       </div>
+
+      {/* Confirmation Modal */}
+      {confirmRollback && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setConfirmRollback(null)}>
+          <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-5 max-w-sm mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-yellow-400" />
+              </div>
+              <div>
+                <h3 className="text-white font-semibold">Confirm Rollback</h3>
+                <p className="text-xs text-gray-400">This will replace your current files</p>
+              </div>
+              <button
+                onClick={() => setConfirmRollback(null)}
+                className="ml-auto p-1 hover:bg-[#21262d] rounded"
+              >
+                <X className="w-4 h-4 text-gray-500" />
+              </button>
+            </div>
+            <p className="text-sm text-gray-300 mb-4">
+              Are you sure you want to rollback to <span className="font-medium text-white">"{confirmRollback.name || 'this checkpoint'}"</span>? 
+              Your current unsaved changes will be replaced.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setConfirmRollback(null)}
+                className="flex-1 px-4 py-2 bg-[#21262d] hover:bg-[#30363d] text-gray-300 rounded-lg text-sm transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleRollback(confirmRollback)}
+                className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                Yes, Rollback
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
