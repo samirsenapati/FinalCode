@@ -848,6 +848,8 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
               currentFiles={files}
               onStatusChange={setAgentStatus}
               projectId={activeProjectId}
+              terminalOutput={terminalOutput}
+              onRunApp={handleRun}
             />
           </div>
 

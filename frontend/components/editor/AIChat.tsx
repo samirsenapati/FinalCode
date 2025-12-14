@@ -17,6 +17,41 @@ interface AIChatProps {
   currentFiles: Record<string, string>;
   onStatusChange?: (status: string) => void;
   projectId?: string | null;
+  terminalOutput?: string[];
+  onRunApp?: () => Promise<void>;
+}
+
+const MAX_AUTO_FIX_ATTEMPTS = 3;
+const ERROR_PATTERNS = [
+  /error:/i,
+  /Error:/,
+  /SyntaxError/,
+  /ReferenceError/,
+  /TypeError/,
+  /Cannot find module/,
+  /ENOENT/,
+  /failed/i,
+  /npm ERR!/,
+  /exception/i,
+  /undefined is not/i,
+  /is not defined/,
+  /unexpected token/i,
+];
+
+function detectErrors(output: string[]): string | null {
+  const errorLines: string[] = [];
+  for (const line of output) {
+    for (const pattern of ERROR_PATTERNS) {
+      if (pattern.test(line)) {
+        errorLines.push(line);
+        break;
+      }
+    }
+  }
+  if (errorLines.length > 0) {
+    return errorLines.slice(0, 10).join('\n');
+  }
+  return null;
 }
 
 import { loadAISettings, getActiveApiKey, AVAILABLE_MODELS } from '@/lib/ai/settings';
@@ -37,15 +72,40 @@ const WELCOME_MESSAGE: Message = {
   timestamp: new Date(),
 };
 
-export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFiles, onStatusChange, projectId }: AIChatProps) {
+export default function AIChat({ onCodeGenerated, onReplaceAllFiles, currentFiles, onStatusChange, projectId, terminalOutput = [], onRunApp }: AIChatProps) {
   const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [isAutoFixing, setIsAutoFixing] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const terminalOutputRef = useRef<string[]>([]);
+  const pendingAutoFixRef = useRef<string | null>(null);
+  const autoFixAttemptRef = useRef(0);
+
+  // Sync terminal output to ref for access in callbacks
+  useEffect(() => {
+    terminalOutputRef.current = terminalOutput;
+  }, [terminalOutput]);
+
+  // Process pending auto-fix after state updates
+  useEffect(() => {
+    if (pendingAutoFixRef.current && !isLoading) {
+      const errorMsg = pendingAutoFixRef.current;
+      pendingAutoFixRef.current = null;
+      setInput(errorMsg);
+      // Trigger send after a brief delay to let state settle
+      setTimeout(() => {
+        const sendBtn = document.querySelector('[data-testid="ai-chat-send-button"]') as HTMLButtonElement;
+        if (sendBtn && !sendBtn.disabled) {
+          sendBtn.click();
+        }
+      }, 100);
+    }
+  }, [isLoading]);
 
   // Load chat history from database when projectId changes
   useEffect(() => {
@@ -280,9 +340,48 @@ Keep responses concise but complete. Focus on delivering working code quickly.`,
         onStatusChange?.(`Updating ${mainCode.language || 'code'} to match your request...`);
         onCodeGenerated(mainCode.code, mainCode.language);
       }
-      onStatusChange?.(isFullstack 
-        ? 'Done — click the Run button to start your app!' 
-        : 'Done — preview the changes on the right.');
+      // Auto-run and check for errors if onRunApp is available
+      if (onRunApp && Object.keys(extractedFiles).length > 0) {
+        onStatusChange?.('Running your app and checking for errors...');
+        
+        try {
+          await onRunApp();
+          
+          // Wait for output to accumulate
+          await new Promise(resolve => setTimeout(resolve, 4000));
+          
+          // Check for errors in terminal output using the synced ref
+          const currentOutput = terminalOutputRef.current;
+          const errors = detectErrors(currentOutput);
+          
+          if (errors && autoFixAttemptRef.current < MAX_AUTO_FIX_ATTEMPTS) {
+            autoFixAttemptRef.current += 1;
+            const attemptNum = autoFixAttemptRef.current;
+            onStatusChange?.(`Found errors, attempting auto-fix (${attemptNum}/${MAX_AUTO_FIX_ATTEMPTS})...`);
+            
+            // Queue auto-fix message - will be processed by useEffect
+            const fixPrompt = `[Auto-fix attempt ${attemptNum}] The app has the following errors:\n\`\`\`\n${errors}\n\`\`\`\n\nPlease analyze and fix these errors in the code. Provide the corrected files.`;
+            pendingAutoFixRef.current = fixPrompt;
+          } else if (errors && autoFixAttemptRef.current >= MAX_AUTO_FIX_ATTEMPTS) {
+            autoFixAttemptRef.current = 0; // Reset for next user request
+            onStatusChange?.(`Auto-fix reached max attempts. Check the console for remaining errors.`);
+          } else {
+            autoFixAttemptRef.current = 0; // Reset on success
+            onStatusChange?.(isFullstack 
+              ? 'Done — your app is running!' 
+              : 'Done — preview the changes on the right.');
+          }
+        } catch (runError) {
+          console.error('Auto-run failed:', runError);
+          onStatusChange?.(isFullstack 
+            ? 'Done — click the Run button to start your app!' 
+            : 'Done — preview the changes on the right.');
+        }
+      } else {
+        onStatusChange?.(isFullstack 
+          ? 'Done — click the Run button to start your app!' 
+          : 'Done — preview the changes on the right.');
+      }
 
     } catch (error: any) {
       console.error('Chat error:', error);
