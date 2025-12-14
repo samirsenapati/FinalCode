@@ -689,7 +689,7 @@ Keep responses concise but complete. Focus on delivering working code quickly.`,
           </div>
         ))}
         
-        {isLoading && activities.length > 0 && (
+        {activities.length > 0 && (
           <div className="ai-message">
             <AgentActivityLog
               activities={activities}
