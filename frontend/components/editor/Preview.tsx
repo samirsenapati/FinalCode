@@ -53,7 +53,7 @@ export default function Preview({ files, serverUrl }: PreviewProps) {
 
   // Generate preview HTML for React projects
   const generateReactPreviewHTML = () => {
-    const cssFile = files['style.css'] || '';
+    const cssFile = files['style.css'] || files['public/style.css'] || '';
     const jsxFiles = Object.entries(files).filter(
       ([filename]) => filename.endsWith('.jsx') || filename.endsWith('.js') || filename.endsWith('.tsx')
     );
@@ -112,9 +112,10 @@ export default function Preview({ files, serverUrl }: PreviewProps) {
 
   // Generate preview HTML for static sites
   const generateStaticPreviewHTML = () => {
-    const htmlFile = files['index.html'] || '';
-    const cssFile = files['style.css'] || '';
-    const jsFile = files['script.js'] || '';
+    // Check both root and public/ paths for files
+    const htmlFile = files['index.html'] || files['public/index.html'] || '';
+    const cssFile = files['style.css'] || files['public/style.css'] || '';
+    const jsFile = files['script.js'] || files['app.js'] || files['public/app.js'] || files['public/script.js'] || '';
 
     if (!htmlFile) {
       return `
@@ -133,7 +134,7 @@ export default function Preview({ files, serverUrl }: PreviewProps) {
 
     let previewHTML = htmlFile;
 
-    // Inject CSS
+    // Inject CSS - check for various path references
     if (cssFile) {
       if (previewHTML.includes("href=\"style.css\"") || previewHTML.includes("href='style.css'")) {
         previewHTML = previewHTML.replace(
@@ -145,14 +146,24 @@ export default function Preview({ files, serverUrl }: PreviewProps) {
       }
     }
 
-    // Inject JS
+    // Inject JS - check for script.js and app.js references (handle various path formats)
     if (jsFile) {
-      if (previewHTML.includes("src=\"script.js\"") || previewHTML.includes("src='script.js'")) {
-        previewHTML = previewHTML.replace(
-          /<script[^>]*src=["']script\.js["'][^>]*><\/script>/gi,
-          `<script>${jsFile}</script>`
-        );
-      } else if (previewHTML.includes('</body>')) {
+      const originalHTML = previewHTML;
+      
+      // Replace script.js references (matches: script.js, ./script.js, /script.js)
+      previewHTML = previewHTML.replace(
+        /<script[^>]*src=["'](?:\.\/|\/)?script\.js["'][^>]*><\/script>/gi,
+        `<script>${jsFile}</script>`
+      );
+      
+      // Replace app.js references (matches: app.js, ./app.js, /app.js)
+      previewHTML = previewHTML.replace(
+        /<script[^>]*src=["'](?:\.\/|\/)?app\.js["'][^>]*><\/script>/gi,
+        `<script>${jsFile}</script>`
+      );
+      
+      // If no replacement was made but we have JS, inject it before </body>
+      if (previewHTML === originalHTML && previewHTML.includes('</body>')) {
         previewHTML = previewHTML.replace('</body>', `<script>${jsFile}</script></body>`);
       }
     }
