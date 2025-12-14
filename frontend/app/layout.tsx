@@ -63,10 +63,10 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
+      { url: '/favicon.png', type: 'image/png' },
       { url: '/favicon.svg', type: 'image/svg+xml' },
-      { url: '/favicon.ico', sizes: 'any' },
     ],
-    apple: '/apple-touch-icon.png',
+    apple: '/favicon.png',
   },
   manifest: '/manifest.json',
 };
