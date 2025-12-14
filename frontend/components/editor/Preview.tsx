@@ -112,10 +112,10 @@ export default function Preview({ files, serverUrl }: PreviewProps) {
 
   // Generate preview HTML for static sites
   const generateStaticPreviewHTML = () => {
-    // Check both root and public/ paths for files
-    const htmlFile = files['index.html'] || files['public/index.html'] || '';
-    const cssFile = files['style.css'] || files['public/style.css'] || '';
-    const jsFile = files['script.js'] || files['app.js'] || files['public/app.js'] || files['public/script.js'] || '';
+    // Check both public/ and root paths for files - prefer public/ (where AI generates files)
+    const htmlFile = files['public/index.html'] || files['index.html'] || '';
+    const cssFile = files['public/style.css'] || files['style.css'] || '';
+    const jsFile = files['public/script.js'] || files['public/app.js'] || files['script.js'] || files['app.js'] || '';
 
     if (!htmlFile) {
       return `
