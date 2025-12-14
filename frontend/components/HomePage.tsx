@@ -133,6 +133,11 @@ export default function HomePage({ userEmail }: { userEmail?: string }) {
           initialFiles: files,
         });
 
+        // Save GitHub connection for the imported repo so Git panel shows correct repo
+        localStorage.setItem('finalcode_github_repo', repo);
+        localStorage.setItem('finalcode_github_branch', branch);
+        localStorage.setItem('finalcode_github_token', token);
+
         setLastProjectId(project.id);
         setShowGitHubImportModal(false);
         router.push('/editor');
