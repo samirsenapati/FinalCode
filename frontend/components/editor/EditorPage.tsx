@@ -37,6 +37,7 @@ import FileTree from '@/components/editor/FileTree';
 import Preview from '@/components/editor/Preview';
 import ProjectModal from '@/components/editor/ProjectModal';
 import Terminal from '@/components/editor/Terminal';
+import ToolsMenu, { type ToolId } from '@/components/editor/ToolsMenu';
 import { useDebouncedCallback } from '@/lib/hooks/useDebouncedCallback';
 import { useCrossOriginIsolation } from '@/lib/hooks/useCrossOriginIsolation';
 import { useKeyboardShortcuts } from '@/lib/hooks/useKeyboardShortcuts';
@@ -138,7 +139,7 @@ console.log('FinalCode app loaded');`,
 
 type SidebarTab = 'files' | 'search' | 'git';
 type BottomPanelTab = 'console' | 'terminal';
-type RightPanelTab = 'preview' | 'console' | 'git' | 'history';
+type RightPanelTab = 'preview' | 'console' | 'git' | 'history' | 'shell' | 'files';
 
 export default function EditorPage({ userEmail }: EditorPageProps) {
   const [isSigningOut, startSignOut] = useTransition();
@@ -183,8 +184,32 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
   const [openFiles, setOpenFiles] = useState<string[]>(['index.html']);
   const [agentStatus, setAgentStatus] = useState('Idle — ready for your next request');
 
-  // Right panel tabs
+  // Right panel tabs - dynamic tab system
   const [rightPanelTab, setRightPanelTab] = useState<RightPanelTab>('preview');
+  const [openRightTabs, setOpenRightTabs] = useState<RightPanelTab[]>(['preview']);
+  const [showToolsMenu, setShowToolsMenu] = useState(false);
+
+  // Open a new tool tab
+  const openToolTab = useCallback((toolId: ToolId) => {
+    setOpenRightTabs(prev => {
+      if (prev.includes(toolId)) return prev;
+      return [...prev, toolId];
+    });
+    setRightPanelTab(toolId as RightPanelTab);
+    setShowToolsMenu(false);
+    if (toolId === 'files') {
+      setLeftSidebarOpen(false);
+    }
+  }, []);
+
+  // Close a tool tab
+  const closeToolTab = useCallback((toolId: RightPanelTab) => {
+    if (toolId === 'preview') return; // Can't close preview
+    setOpenRightTabs(prev => prev.filter(t => t !== toolId));
+    if (rightPanelTab === toolId) {
+      setRightPanelTab('preview');
+    }
+  }, [rightPanelTab]);
 
   // GitHub integration
   const [githubRepo, setGithubRepo] = useState('');
@@ -866,69 +891,81 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
           </div>
         </div>
 
-        {/* Right Panel - Tabbed (Preview, Console, Git) */}
+        {/* Right Panel - Tabbed (Preview, Console, Git, etc.) */}
         <div className="flex-1 flex flex-col bg-[#161b22]">
-          {/* Tab Bar - Replit Style */}
+          {/* Tab Bar - Dynamic Replit Style */}
           <div className="h-10 bg-[#0d1117] border-b border-[#21262d] flex items-center px-2">
-            <div
-              onClick={() => setRightPanelTab('preview')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded transition-colors cursor-pointer ${
-                rightPanelTab === 'preview'
-                  ? 'bg-[#21262d] text-white'
-                  : 'text-[#8b949e] hover:text-white hover:bg-[#161b22]'
-              }`}
-            >
-              <Eye className="w-3.5 h-3.5" />
-              Preview
-              <span className="ml-1 p-0.5 hover:bg-[#30363d] rounded opacity-60 hover:opacity-100">
-                <X className="w-3 h-3" />
-              </span>
+            {openRightTabs.map((tab) => {
+              const TAB_ICONS: Record<RightPanelTab, React.ElementType> = {
+                preview: Eye,
+                console: TerminalIcon,
+                git: GitBranch,
+                history: RotateCcw,
+                shell: TerminalIcon,
+                files: Files,
+              };
+              const TAB_LABELS: Record<RightPanelTab, string> = {
+                preview: 'Preview',
+                console: 'Console',
+                git: 'Git',
+                history: 'History',
+                shell: 'Shell',
+                files: 'Files',
+              };
+              const Icon = TAB_ICONS[tab];
+              const label = TAB_LABELS[tab];
+              
+              return (
+                <div
+                  key={tab}
+                  onClick={() => {
+                    setRightPanelTab(tab);
+                    setShowToolsMenu(false);
+                    if (tab === 'files') {
+                      setLeftSidebarOpen(false);
+                    }
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded transition-colors cursor-pointer ${
+                    rightPanelTab === tab
+                      ? 'bg-[#21262d] text-white'
+                      : 'text-[#8b949e] hover:text-white hover:bg-[#161b22]'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {label}
+                  {tab !== 'preview' && (
+                    <span
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        closeToolTab(tab);
+                      }}
+                      className="ml-1 p-0.5 hover:bg-[#30363d] rounded opacity-60 hover:opacity-100"
+                    >
+                      <X className="w-3 h-3" />
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+            
+            {/* Tools & Files Button */}
+            <div className="relative">
+              <button
+                onClick={() => setShowToolsMenu(!showToolsMenu)}
+                className="flex items-center gap-1 px-2 py-1.5 text-sm text-[#8b949e] hover:text-white hover:bg-[#161b22] rounded transition-colors ml-1"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span className="text-xs">Tools & files</span>
+              </button>
+              {showToolsMenu && (
+                <ToolsMenu
+                  openTabs={openRightTabs}
+                  onOpenTool={openToolTab}
+                  onClose={() => setShowToolsMenu(false)}
+                />
+              )}
             </div>
-            <div
-              onClick={() => setRightPanelTab('console')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded transition-colors cursor-pointer ${
-                rightPanelTab === 'console'
-                  ? 'bg-[#21262d] text-white'
-                  : 'text-[#8b949e] hover:text-white hover:bg-[#161b22]'
-              }`}
-            >
-              <TerminalIcon className="w-3.5 h-3.5" />
-              Console
-              <span className="ml-1 p-0.5 hover:bg-[#30363d] rounded opacity-60 hover:opacity-100">
-                <X className="w-3 h-3" />
-              </span>
-            </div>
-            <div
-              onClick={() => setRightPanelTab('git')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded transition-colors cursor-pointer ${
-                rightPanelTab === 'git'
-                  ? 'bg-[#21262d] text-white'
-                  : 'text-[#8b949e] hover:text-white hover:bg-[#161b22]'
-              }`}
-            >
-              <GitBranch className="w-3.5 h-3.5" />
-              Git
-              <span className="ml-1 p-0.5 hover:bg-[#30363d] rounded opacity-60 hover:opacity-100">
-                <X className="w-3 h-3" />
-              </span>
-            </div>
-            <div
-              onClick={() => setRightPanelTab('history')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded transition-colors cursor-pointer ${
-                rightPanelTab === 'history'
-                  ? 'bg-[#21262d] text-white'
-                  : 'text-[#8b949e] hover:text-white hover:bg-[#161b22]'
-              }`}
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              History
-              <span className="ml-1 p-0.5 hover:bg-[#30363d] rounded opacity-60 hover:opacity-100">
-                <X className="w-3 h-3" />
-              </span>
-            </div>
-            <div className="flex items-center justify-center w-7 h-7 text-[#8b949e] hover:text-white hover:bg-[#161b22] rounded transition-colors ml-1 cursor-pointer">
-              <Plus className="w-4 h-4" />
-            </div>
+            
             <div className="flex-1" />
             <div className="flex items-center gap-2">
               <button
@@ -1159,6 +1196,54 @@ export default function EditorPage({ userEmail }: EditorPageProps) {
                   currentFiles={files}
                   onSwitchToPreview={() => setRightPanelTab('preview')}
                 />
+              </div>
+            )}
+
+            {/* Shell Tab */}
+            {rightPanelTab === 'shell' && (
+              <div className="h-full bg-[#0d1117] flex flex-col">
+                <div className="h-9 bg-[#161b22] border-b border-[#21262d] flex items-center px-3 flex-shrink-0">
+                  <span className="text-sm text-[#c9d1d9]">Shell</span>
+                  <div className="flex-1" />
+                  <button
+                    onClick={() => setTerminalOutput(['> FinalCode Terminal Ready', ''])}
+                    className="icon-btn p-1"
+                    title="Clear Console"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-hidden">
+                  <Terminal output={terminalOutput} />
+                </div>
+              </div>
+            )}
+
+            {/* Files Tab */}
+            {rightPanelTab === 'files' && (
+              <div className="h-full bg-[#0d1117] flex flex-col">
+                <div className="h-9 bg-[#161b22] border-b border-[#21262d] flex items-center px-3 flex-shrink-0">
+                  <span className="text-sm text-[#c9d1d9]">Files</span>
+                  <div className="flex-1" />
+                  <button
+                    onClick={() => {
+                      const name = prompt('Enter filename (e.g., app.js):');
+                      if (name) handleCreateFile(name);
+                    }}
+                    className="p-1 hover:bg-[#21262d] rounded transition-colors"
+                    title="New File"
+                  >
+                    <Plus className="w-4 h-4 text-[#8b949e]" />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-hidden">
+                  <FileTree
+                    files={files}
+                    activeFile={activeFile}
+                    onSelectFile={handleSelectFile}
+                    onDeleteFile={handleDeleteFile}
+                  />
+                </div>
               </div>
             )}
           </div>
