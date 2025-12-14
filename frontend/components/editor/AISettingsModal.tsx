@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { X, KeyRound, AlertTriangle, Cpu, Zap, Brain, Sparkles, Check, Star, Gauge, Clock } from 'lucide-react';
+import { X, KeyRound, AlertTriangle, Cpu, Brain, Sparkles, Check, Star, Gauge, ChevronDown, ChevronUp, CheckCircle2, ExternalLink, Info } from 'lucide-react';
 import type { AIProvider, AISettings, AIMode } from '@/lib/ai/settings';
 import {
   DEFAULT_AI_SETTINGS,
@@ -18,15 +18,15 @@ type Props = {
   onSaved: (settings: AISettings) => void;
 };
 
-const MODEL_RATINGS: Record<string, { capability: number; speed: number; cost: 'low' | 'medium' | 'high' }> = {
-  'gpt-5.2': { capability: 5, speed: 3, cost: 'high' },
-  'gpt-4.1': { capability: 4, speed: 3, cost: 'high' },
-  'gpt-4.1-mini': { capability: 3, speed: 5, cost: 'low' },
-  'gpt-4o': { capability: 4, speed: 4, cost: 'medium' },
-  'claude-opus-4-5-20251101': { capability: 5, speed: 3, cost: 'high' },
-  'claude-sonnet-4-20250514': { capability: 4, speed: 4, cost: 'medium' },
-  'claude-3-5-sonnet-latest': { capability: 4, speed: 4, cost: 'medium' },
-  'claude-3-5-haiku-latest': { capability: 3, speed: 5, cost: 'low' },
+const MODEL_RATINGS: Record<string, { capability: number; speed: number; cost: 'low' | 'medium' | 'high'; costEstimate: string }> = {
+  'gpt-5.2': { capability: 5, speed: 3, cost: 'high', costEstimate: '~$0.05' },
+  'gpt-4.1': { capability: 4, speed: 3, cost: 'high', costEstimate: '~$0.03' },
+  'gpt-4.1-mini': { capability: 3, speed: 5, cost: 'low', costEstimate: '~$0.001' },
+  'gpt-4o': { capability: 4, speed: 4, cost: 'medium', costEstimate: '~$0.02' },
+  'claude-opus-4-5-20251101': { capability: 5, speed: 3, cost: 'high', costEstimate: '~$0.05' },
+  'claude-sonnet-4-20250514': { capability: 4, speed: 4, cost: 'medium', costEstimate: '~$0.02' },
+  'claude-3-5-sonnet-latest': { capability: 4, speed: 4, cost: 'medium', costEstimate: '~$0.015' },
+  'claude-3-5-haiku-latest': { capability: 3, speed: 5, cost: 'low', costEstimate: '~$0.002' },
 };
 
 const COST_COLORS = {
@@ -63,13 +63,117 @@ function RatingDots({ value, max = 5, color = 'purple' }: { value: number; max?:
   );
 }
 
+function SetupGuide({ provider, expanded, onToggle }: { provider: 'openai' | 'anthropic'; expanded: boolean; onToggle: () => void }) {
+  const isOpenAI = provider === 'openai';
+  
+  const steps = isOpenAI ? [
+    { text: 'Go to platform.openai.com/api-keys', link: 'https://platform.openai.com/api-keys' },
+    { text: 'Click "Create new secret key"' },
+    { text: 'Give it a name (e.g., "FinalCode")' },
+    { text: 'Copy the key and paste below' },
+  ] : [
+    { text: 'Go to console.anthropic.com/settings/keys', link: 'https://console.anthropic.com/settings/keys' },
+    { text: 'Click "Create Key"' },
+    { text: 'Name it (e.g., "FinalCode")' },
+    { text: 'Copy the key and paste below' },
+  ];
+
+  const note = isOpenAI 
+    ? "You'll need at least $5 in API credits. Pay-as-you-go billing."
+    : "Requires billing setup at console.anthropic.com";
+
+  const accentColor = isOpenAI ? 'green' : 'orange';
+
+  return (
+    <div className="mt-3">
+      <button
+        type="button"
+        onClick={onToggle}
+        className={`flex items-center gap-2 text-xs font-medium transition-colors ${
+          isOpenAI ? 'text-green-400 hover:text-green-300' : 'text-orange-400 hover:text-orange-300'
+        }`}
+      >
+        {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+        How to get your API key
+      </button>
+      
+      {expanded && (
+        <div className={`mt-3 p-4 rounded-lg border ${
+          isOpenAI 
+            ? 'bg-green-500/5 border-green-500/20' 
+            : 'bg-orange-500/5 border-orange-500/20'
+        }`}>
+          <ol className="space-y-2.5">
+            {steps.map((step, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
+                <span className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                  isOpenAI 
+                    ? 'bg-green-500/20 text-green-400' 
+                    : 'bg-orange-500/20 text-orange-400'
+                }`}>
+                  {i + 1}
+                </span>
+                {step.link ? (
+                  <a 
+                    href={step.link} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className={`inline-flex items-center gap-1 hover:underline ${
+                      isOpenAI ? 'text-green-400' : 'text-orange-400'
+                    }`}
+                  >
+                    {step.text}
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                ) : (
+                  <span>{step.text}</span>
+                )}
+              </li>
+            ))}
+          </ol>
+          <div className={`mt-3 pt-3 border-t flex items-start gap-2 text-xs ${
+            isOpenAI ? 'border-green-500/20 text-green-300/70' : 'border-orange-500/20 text-orange-300/70'
+          }`}>
+            <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+            <span>{note}</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function isValidKeyFormat(provider: 'openai' | 'anthropic', key: string): { valid: boolean; message: string } {
+  if (!key) return { valid: false, message: '' };
+  
+  if (provider === 'openai') {
+    if (key.startsWith('sk-') && key.length > 20) {
+      return { valid: true, message: 'Format looks correct' };
+    }
+    return { valid: false, message: 'Should start with "sk-"' };
+  }
+  
+  if (provider === 'anthropic') {
+    if (key.startsWith('sk-ant-') && key.length > 20) {
+      return { valid: true, message: 'Format looks correct' };
+    }
+    return { valid: false, message: 'Should start with "sk-ant-"' };
+  }
+  
+  return { valid: false, message: '' };
+}
+
 export default function AISettingsModal({ open, onClose, onSaved }: Props) {
   const [settings, setSettings] = useState<AISettings>(DEFAULT_AI_SETTINGS);
   const [showOpenAIKey, setShowOpenAIKey] = useState(false);
   const [showAnthropicKey, setShowAnthropicKey] = useState(false);
+  const [openAIGuideExpanded, setOpenAIGuideExpanded] = useState(false);
+  const [anthropicGuideExpanded, setAnthropicGuideExpanded] = useState(false);
 
   useEffect(() => {
-    if (open) setSettings(loadAISettings());
+    if (open) {
+      setSettings(loadAISettings());
+    }
   }, [open]);
 
   const modelOptions = useMemo(() => AVAILABLE_MODELS[settings.provider] ?? [], [settings.provider]);
@@ -85,6 +189,29 @@ export default function AISettingsModal({ open, onClose, onSaved }: Props) {
     saveAISettings(settings);
     onSaved(settings);
     onClose();
+  };
+
+  const getKeyFormatUI = (provider: 'openai' | 'anthropic') => {
+    const key = provider === 'openai' ? settings.openaiApiKey : settings.anthropicApiKey;
+    const validation = isValidKeyFormat(provider, key);
+    
+    if (!key) return null;
+    
+    return (
+      <div className="flex items-center gap-1.5 mt-1.5">
+        {validation.valid ? (
+          <span className="flex items-center gap-1 text-xs text-green-400">
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            {validation.message}
+          </span>
+        ) : (
+          <span className="flex items-center gap-1 text-xs text-yellow-400">
+            <Info className="w-3.5 h-3.5" />
+            {validation.message}
+          </span>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -220,7 +347,7 @@ export default function AISettingsModal({ open, onClose, onSaved }: Props) {
             </label>
             <div className="grid gap-3">
               {modelOptions.map((m) => {
-                const rating = MODEL_RATINGS[m.value] || { capability: 3, speed: 3, cost: 'medium' };
+                const rating = MODEL_RATINGS[m.value] || { capability: 3, speed: 3, cost: 'medium', costEstimate: '~$0.01' };
                 const isSelected = settings.model === m.value;
                 const providerColor = settings.provider === 'anthropic' ? 'orange' : 'green';
                 
@@ -270,6 +397,9 @@ export default function AISettingsModal({ open, onClose, onSaved }: Props) {
                             <span className="text-xs text-gray-500">Cost</span>
                             <span className={`text-xs font-bold ${COST_COLORS[rating.cost]}`}>
                               {COST_LABELS[rating.cost]}
+                            </span>
+                            <span className="text-xs text-gray-500 ml-1">
+                              ({rating.costEstimate}/req)
                             </span>
                           </div>
                         </div>
@@ -347,14 +477,16 @@ export default function AISettingsModal({ open, onClose, onSaved }: Props) {
                 </div>
               </div>
 
-              <div className="grid gap-4">
+              <div className="grid gap-6">
                 {/* OpenAI API Key */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <label className="text-sm text-gray-300 flex items-center gap-2">
                       <div className="w-5 h-5 rounded bg-green-500/20 flex items-center justify-center text-green-400 text-xs font-bold">O</div>
                       OpenAI API Key
-                      {settings.openaiApiKey && <Check className="w-4 h-4 text-green-400" />}
+                      {settings.openaiApiKey && isValidKeyFormat('openai', settings.openaiApiKey).valid && (
+                        <CheckCircle2 className="w-4 h-4 text-green-400" />
+                      )}
                     </label>
                     <button
                       type="button"
@@ -366,15 +498,22 @@ export default function AISettingsModal({ open, onClose, onSaved }: Props) {
                   </div>
                   <input
                     type={showOpenAIKey ? 'text' : 'password'}
-                    className="w-full rounded-lg bg-[#0d1117] border border-gray-700 px-3 py-2.5 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent font-mono text-sm"
+                    className={`w-full rounded-lg bg-[#0d1117] border px-3 py-2.5 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 font-mono text-sm ${
+                      settings.openaiApiKey && isValidKeyFormat('openai', settings.openaiApiKey).valid
+                        ? 'border-green-500 focus:ring-green-500'
+                        : 'border-gray-700 focus:ring-green-500'
+                    } focus:border-transparent`}
                     placeholder="sk-..."
                     value={settings.openaiApiKey}
                     onChange={(e) => setSettings((s) => ({ ...s, openaiApiKey: e.target.value }))}
                     data-testid="ai-settings-openai-api-key-input"
                   />
-                  <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-xs text-green-400 hover:underline inline-flex items-center gap-1">
-                    Get your OpenAI API key →
-                  </a>
+                  {getKeyFormatUI('openai')}
+                  <SetupGuide 
+                    provider="openai" 
+                    expanded={openAIGuideExpanded} 
+                    onToggle={() => setOpenAIGuideExpanded(!openAIGuideExpanded)} 
+                  />
                 </div>
 
                 {/* Anthropic API Key */}
@@ -383,7 +522,9 @@ export default function AISettingsModal({ open, onClose, onSaved }: Props) {
                     <label className="text-sm text-gray-300 flex items-center gap-2">
                       <div className="w-5 h-5 rounded bg-orange-500/20 flex items-center justify-center text-orange-400 text-xs font-bold">A</div>
                       Anthropic API Key
-                      {settings.anthropicApiKey && <Check className="w-4 h-4 text-orange-400" />}
+                      {settings.anthropicApiKey && isValidKeyFormat('anthropic', settings.anthropicApiKey).valid && (
+                        <CheckCircle2 className="w-4 h-4 text-orange-400" />
+                      )}
                     </label>
                     <button
                       type="button"
@@ -395,16 +536,29 @@ export default function AISettingsModal({ open, onClose, onSaved }: Props) {
                   </div>
                   <input
                     type={showAnthropicKey ? 'text' : 'password'}
-                    className="w-full rounded-lg bg-[#0d1117] border border-gray-700 px-3 py-2.5 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent font-mono text-sm"
+                    className={`w-full rounded-lg bg-[#0d1117] border px-3 py-2.5 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 font-mono text-sm ${
+                      settings.anthropicApiKey && isValidKeyFormat('anthropic', settings.anthropicApiKey).valid
+                        ? 'border-orange-500 focus:ring-orange-500'
+                        : 'border-gray-700 focus:ring-orange-500'
+                    } focus:border-transparent`}
                     placeholder="sk-ant-..."
                     value={settings.anthropicApiKey}
                     onChange={(e) => setSettings((s) => ({ ...s, anthropicApiKey: e.target.value }))}
                     data-testid="ai-settings-anthropic-api-key-input"
                   />
-                  <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer" className="text-xs text-orange-400 hover:underline inline-flex items-center gap-1">
-                    Get your Anthropic API key →
-                  </a>
+                  {getKeyFormatUI('anthropic')}
+                  <SetupGuide 
+                    provider="anthropic" 
+                    expanded={anthropicGuideExpanded} 
+                    onToggle={() => setAnthropicGuideExpanded(!anthropicGuideExpanded)} 
+                  />
                 </div>
+              </div>
+
+              {/* Key validation note */}
+              <div className="flex items-start gap-2 text-xs text-gray-400 mt-4 p-3 rounded-lg bg-gray-800/50">
+                <Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-400" />
+                <span>Your key will be validated when you send your first AI message. If there's an issue, you'll see an error message then.</span>
               </div>
             </div>
           )}
