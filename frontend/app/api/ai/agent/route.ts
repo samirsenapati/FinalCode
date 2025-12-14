@@ -5,9 +5,10 @@ import { getOpenAITools, getAnthropicTools } from '@/lib/agent/tools';
 import { executeTool, FileMap, ToolResult } from '@/lib/agent/handlers';
 import { AGENT_SYSTEM_PROMPT, AGENT_FORCE_ACTION_PROMPT } from '@/lib/agent/prompts';
 
-const MAX_ITERATIONS = 20;
-const MAX_NUDGES = 3;
-const MAX_TOKENS = 8192;
+const MAX_ITERATIONS = 15;
+const MAX_NUDGES = 2;
+const MAX_TOKENS = 4096;
+const RATE_LIMIT_RETRY_DELAY = 5000;
 
 type Provider = 'openai' | 'anthropic';
 
@@ -50,7 +51,8 @@ async function callOpenAI(
   model: string,
   messages: any[],
   tools: any[],
-  forceTools: boolean = false
+  forceTools: boolean = false,
+  retryCount: number = 0
 ): Promise<{ content: string | null; tool_calls: any[] | null; error?: string }> {
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -70,7 +72,15 @@ async function callOpenAI(
 
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
-    return { content: null, tool_calls: null, error: json?.error?.message || `OpenAI error (${res.status})` };
+    const errorMsg = json?.error?.message || `OpenAI error (${res.status})`;
+    
+    if (res.status === 429 && retryCount < 2) {
+      const waitTime = RATE_LIMIT_RETRY_DELAY * (retryCount + 1);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+      return callOpenAI(apiKey, model, messages, tools, forceTools, retryCount + 1);
+    }
+    
+    return { content: null, tool_calls: null, error: errorMsg };
   }
 
   const choice = json?.choices?.[0];
@@ -84,7 +94,8 @@ async function callAnthropic(
   apiKey: string,
   model: string,
   messages: any[],
-  tools: any[]
+  tools: any[],
+  retryCount: number = 0
 ): Promise<{ content: string | null; tool_calls: any[] | null; error?: string }> {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -106,7 +117,15 @@ async function callAnthropic(
 
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
-    return { content: null, tool_calls: null, error: json?.error?.message || `Anthropic error (${res.status})` };
+    const errorMsg = json?.error?.message || `Anthropic error (${res.status})`;
+    
+    if (res.status === 429 && retryCount < 2) {
+      const waitTime = RATE_LIMIT_RETRY_DELAY * (retryCount + 1);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+      return callAnthropic(apiKey, model, messages, tools, retryCount + 1);
+    }
+    
+    return { content: null, tool_calls: null, error: errorMsg };
   }
 
   const blocks = json?.content ?? [];

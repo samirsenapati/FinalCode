@@ -655,13 +655,26 @@ Keep responses concise but complete. Focus on delivering working code quickly.`,
     setAttachedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const settingsSnapshot = (() => {
+  // Use state to avoid hydration mismatch - settings only load on client
+  const [settingsSnapshot, setSettingsSnapshot] = useState<any>({
+    mode: 'managed',
+    provider: 'anthropic',
+    apiKey: '',
+    model: 'claude-opus-4-5-20251101',
+    openaiApiKey: '',
+    anthropicApiKey: '',
+  });
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+
+  useEffect(() => {
     try {
-      return loadAISettings();
+      const settings = loadAISettings();
+      setSettingsSnapshot(settings);
     } catch {
-      return { mode: 'managed', provider: 'anthropic', apiKey: '', model: 'claude-opus-4-5-20251101', openaiApiKey: '', anthropicApiKey: '' } as any;
+      // Keep defaults
     }
-  })();
+    setSettingsLoaded(true);
+  }, []);
 
   const hasKey = Boolean(getActiveApiKey(settingsSnapshot)?.trim());
 
